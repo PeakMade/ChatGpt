@@ -23,7 +23,7 @@ except ImportError:
 
 # Configure page
 st.set_page_config(
-    page_title="AI Assistant",
+    page_title="AI BOOST",
     page_icon="💬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -343,7 +343,7 @@ def main():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>AI Assistant</h1>
+        <h1>AI BOOST</h1>
         <p>Modern AI-powered chat interface</p>
     </div>
     """, unsafe_allow_html=True)
@@ -467,31 +467,28 @@ def main():
                 if uploaded_content:
                     st.success(f"✅ {len(uploaded_content)} chars processed")
         
-        # Display conversation history
-        for message in st.session_state.messages:
-            if message["role"] == "user":
-                st.write(f"**You:** {message['content']}")
-            else:
-                st.write(f"**AI:** {message['content']}")
-        
         # Simple chat input that actually works
         if prompt := st.chat_input("What would you like to know?"):
             if openai_client:
                 # Add user message
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 
-                # Show user message immediately
-                st.write(f"**You:** {prompt}")
-                
                 # Get and add AI response
                 with st.spinner("Thinking..."):
                     response = get_chat_response(openai_client, st.session_state.messages, uploaded_content)
                     st.session_state.messages.append({"role": "assistant", "content": response})
-                    
-                    # Show AI response immediately
-                    st.write(f"**AI:** {response}")
+                
+                # Force rerun to show new messages
+                st.rerun()
             else:
                 st.error("Please enter your API key in the sidebar first!")
+        
+        # Display conversation history AFTER chat input processing
+        for message in st.session_state.messages:
+            if message["role"] == "user":
+                st.write(f"**You:** {message['content']}")
+            else:
+                st.write(f"**AI:** {message['content']}")
         
         st.markdown('</div>', unsafe_allow_html=True)
     
