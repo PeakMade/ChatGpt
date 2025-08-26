@@ -119,19 +119,12 @@ def init_openai():
             api_key = ""
     
     if not api_key:
-        with st.sidebar:
-            st.warning("OpenAI API key required")
-            api_key = st.text_input("Enter your OpenAI API Key:", type="password", key="api_key_input")
-            if api_key:
-                st.success("API key provided!")
-                openai.api_key = api_key
-                return True
-            else:
-                st.info("Please enter your OpenAI API key to start chatting")
-                return False
+        st.error("OpenAI API key is required. Please set it in your environment variables or Streamlit secrets.")
+        st.stop()
     
-    openai.api_key = api_key
-    return True
+    # Initialize OpenAI client with the new v1.0+ API
+    client = openai.OpenAI(api_key=api_key)
+    return client
 
 # Database operations
 def save_conversation(db, conversation_data):
@@ -205,7 +198,7 @@ def process_text_file(uploaded_file):
         return ""
 
 # Chat function
-def get_chat_response(messages, uploaded_content=""):
+def get_chat_response(client, messages, uploaded_content=""):
     """Get response from OpenAI API"""
     try:
         # Prepare messages for OpenAI
@@ -225,8 +218,8 @@ def get_chat_response(messages, uploaded_content=""):
                 "content": msg["content"]
             })
         
-        # Get response from OpenAI
-        response = openai.ChatCompletion.create(
+        # Get response from OpenAI using new client API
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=openai_messages,
             max_tokens=1000,
@@ -242,7 +235,7 @@ def get_chat_response(messages, uploaded_content=""):
 def main():
     # Initialize services
     db = init_mongodb()
-    openai_ready = init_openai()
+    openai_client = init_openai()
     
     # Header
     st.markdown("""
@@ -370,7 +363,7 @@ def main():
                 """, unsafe_allow_html=True)
         
         # Chat input
-        if prompt := st.chat_input("Type your message here...", disabled=not openai_ready):
+        if prompt := st.chat_input("Type your message here...", disabled=not openai_client):
             # Add user message
             st.session_state.messages.append({"role": "user", "content": prompt})
             
@@ -384,7 +377,7 @@ def main():
             
             # Get AI response
             with st.spinner("Thinking..."):
-                response = get_chat_response(st.session_state.messages, uploaded_content)
+                response = get_chat_response(openai_client, st.session_state.messages, uploaded_content)
                 st.session_state.messages.append({"role": "assistant", "content": response})
             
             # Display assistant response
