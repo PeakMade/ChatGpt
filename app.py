@@ -102,9 +102,8 @@ def init_mongodb():
     try:
         # Use MongoDB Atlas connection string from environment variables
         mongo_uri = os.getenv("MONGODB_URI", "")
-        if not mongo_uri:
-            # Fall back to session state storage if no MongoDB
-            st.warning("MongoDB not configured. Using session-based storage.")
+        if not mongo_uri or mongo_uri == "mongodb://localhost:27017/":
+            # Fall back to session state storage if no MongoDB configured
             return None
             
         client = pymongo.MongoClient(mongo_uri)
@@ -113,7 +112,7 @@ def init_mongodb():
         db = client.chatgpt_clone
         return db
     except Exception as e:
-        st.warning(f"MongoDB connection failed, using session storage: {e}")
+        # Silently fall back to session storage
         return None
 
 # OpenAI configuration
@@ -127,9 +126,18 @@ def init_openai():
             api_key = ""
     
     if not api_key:
-        st.error("❗ OpenAI API key is required for deployment.")
-        st.info("💡 Set OPENAI_API_KEY in Azure App Service Configuration → Application Settings")
-        st.stop()
+        with st.sidebar:
+            st.warning("🔑 OpenAI API key required")
+            api_key = st.text_input("Enter your OpenAI API Key:", type="password", key="api_key_input")
+            if api_key:
+                st.success("✅ API key provided!")
+                # Initialize OpenAI client with the new v1.0+ API
+                client = openai.OpenAI(api_key=api_key)
+                return client
+            else:
+                st.info("💡 Please enter your OpenAI API key to start chatting")
+                st.markdown("Get your API key from: https://platform.openai.com/api-keys")
+                return None
     
     # Initialize OpenAI client with the new v1.0+ API
     client = openai.OpenAI(api_key=api_key)
