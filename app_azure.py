@@ -477,15 +477,19 @@ def main():
         # Simple chat input that actually works
         if prompt := st.chat_input("What would you like to know?"):
             if openai_client:
-                # Add user message and display it
+                # Add user message
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 
-                # Get and add AI response
-                response = get_chat_response(openai_client, st.session_state.messages, uploaded_content)
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                # Show user message immediately
+                st.write(f"**You:** {prompt}")
                 
-                # Refresh to show new messages
-                st.rerun()
+                # Get and add AI response
+                with st.spinner("Thinking..."):
+                    response = get_chat_response(openai_client, st.session_state.messages, uploaded_content)
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                    
+                    # Show AI response immediately
+                    st.write(f"**AI:** {response}")
             else:
                 st.error("Please enter your API key in the sidebar first!")
         
