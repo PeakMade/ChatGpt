@@ -1,6 +1,11 @@
-streamlit
+# Core dependencies for ChatGPT Clone
+streamlit>=1.28.0
 openai>=1.0.0
-pymongo
-bcrypt
-PyPDF2
-python-dotenv
+pymongo>=4.5.0
+bcrypt>=4.0.0
+PyPDF2>=3.0.0
+python-dotenv>=1.0.0
+
+# Additional dependencies for Python 3.11 compatibility
+typing-extensions>=4.5.0
+setuptools>=65.0.0
