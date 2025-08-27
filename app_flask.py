@@ -44,6 +44,14 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         return "Error: No OpenAI API key provided."
         
     try:
+        # Clean the API key of any whitespace
+        api_key = api_key.strip()
+        
+        # Debug info
+        print(f"API Key length: {len(api_key)}")
+        print(f"API Key starts with: {api_key[:10]}...")
+        print(f"API Key ends with: ...{api_key[-10:]}")
+        
         # Create client directly with the API key
         client = openai.OpenAI(api_key=api_key)
         
@@ -89,8 +97,8 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
         )
         
         return response.choices[0].message.content
-    except openai.AuthenticationError:
-        return "Error: Invalid API key. Please check your OpenAI API key."
+    except openai.AuthenticationError as e:
+        return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
     except openai.RateLimitError:
         return "Error: Rate limit exceeded. Please try again later."
     except openai.InsufficientQuotaError:
@@ -129,6 +137,9 @@ def chat():
         data = request.get_json()
         user_message = data.get('message', '').strip()
         api_key = data.get('api_key', '').strip()
+        
+        print(f"Received API key length: {len(api_key) if api_key else 0}")
+        print(f"API key first 10 chars: {api_key[:10] if api_key else 'None'}")
         
         if not user_message:
             return jsonify({'error': 'Message cannot be empty'}), 400
