@@ -152,8 +152,9 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
                 "content": msg["content"]
             })
         
-        # Use legacy API call
-        response = openai.ChatCompletion.create(
+        # Use modern API call with globally set API key
+        client = openai.OpenAI()
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=openai_messages,
             max_tokens=1500,
@@ -162,7 +163,7 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
         
         return response.choices[0].message.content
     except Exception as e:
-        return f"Error (legacy): {str(e)}"
+        return f"Error (fallback): {str(e)}"
 
 def extract_text_from_pdf(pdf_file):
     """Extract text from PDF file"""
