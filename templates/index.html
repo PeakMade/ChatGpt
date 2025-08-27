@@ -15,6 +15,23 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
+            padding: 0;
+            margin: 0;
+        }
+
+        .header-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 19px 0;
+            background-color: white;
+            border-bottom: 1px solid #ddd;
+            margin: 0;
+            width: 100%;
+        }
+
+        .content-wrapper {
             padding: 20px;
         }
 
@@ -24,7 +41,7 @@
             display: grid;
             grid-template-columns: 300px 1fr;
             gap: 20px;
-            height: calc(100vh - 40px);
+            height: calc(100vh - 140px);
         }
 
         .sidebar {
@@ -44,22 +61,57 @@
             overflow: hidden;
         }
 
-        .header {
+        .header-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 19px 0;
+            background-color: white;
+            border-bottom: 1px solid #ddd;
+            margin: 0;
+            width: 100%;
+        }
+
+        .logo {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 30px;
+        }
+
+        .logo-clean {
+            position: absolute;
+            left: 70px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-clean-right {
+            position: absolute;
+            right: 70px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+        }
+
+        .logo img {
+            height: 77px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
             text-align: center;
-            padding: 20px;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            border-radius: 12px 12px 0 0;
-        }
-
-        .header h1 {
-            font-size: 1.8rem;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            font-size: 0.9rem;
-            opacity: 0.9;
+            margin: 0;
+            padding: 0;
         }
 
         .chat-messages {
@@ -244,30 +296,38 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar">
-            <div class="api-key-section">
-                <h3>OpenAI API Key</h3>
-                <textarea id="apiKey" class="api-key-input" placeholder="Enter your OpenAI API key here..." rows="3"></textarea>
-                <div id="apiStatus" class="status-indicator status-disconnected">Not Connected</div>
-            </div>
-
-            <div class="file-upload-section">
-                <h3>Upload File</h3>
-                <input type="file" id="fileInput" class="file-input" accept=".pdf,.txt">
-                <button onclick="uploadFile()" class="btn btn-secondary" style="width: 100%;">Upload</button>
-                <div id="uploadStatus"></div>
-            </div>
-
-            <div style="margin-top: 20px;">
-                <button onclick="clearChat()" class="btn btn-secondary" style="width: 100%;">Clear Chat</button>
-            </div>
+    <div class="header-container">
+        <div class="logo logo-clean">
+            <img src="https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcTQp9CsCdZ6lFTwb9RO4FLBRF5gDF1DuoBILJzmoyOiwi486qh3" alt="PEAKMADE Logo">
         </div>
+        <div class="title">AI BOOST</div>
+        <div class="logo logo-clean-right">
+            <img src="https://media.licdn.com/dms/image/v2/C4E0BAQEeymUsYZLAcA/company-logo_200_200/company-logo_200_200/0/1670942774710?e=2147483647&v=beta&t=ydIqY4GhAC9VVs2gXIVfrruX6cwJLSExaORvpu-5Dno" alt="Redpoint CONNECT Logo">
+        </div>
+    </div>
+    
+    <div class="content-wrapper">
+        <div class="container">
+            <div class="sidebar">
+                <div class="api-key-section">
+                    <h3>OpenAI API Key</h3>
+                    <textarea id="apiKey" class="api-key-input" placeholder="Enter your OpenAI API key here..." rows="3"></textarea>
+                    <div id="apiStatus" class="status-indicator status-disconnected">Not Connected</div>
+                </div>
 
-        <div class="main-chat">
-            <div class="header">
-                <h1>AI BOOST</h1>
+                <div class="file-upload-section">
+                    <h3>Upload File</h3>
+                    <input type="file" id="fileInput" class="file-input" accept=".pdf,.txt">
+                    <button onclick="uploadFile()" class="btn btn-secondary" style="width: 100%;">Upload</button>
+                    <div id="uploadStatus"></div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button onclick="clearChat()" class="btn btn-secondary" style="width: 100%;">Clear Chat</button>
+                </div>
             </div>
+
+            <div class="main-chat">
 
             <div id="chatMessages" class="chat-messages">
                 <div class="assistant-message">
@@ -283,6 +343,7 @@
                 <div id="loading" class="loading">AI is thinking...</div>
                 <div id="errorMessage" class="error"></div>
             </div>
+        </div>
         </div>
     </div>
 
