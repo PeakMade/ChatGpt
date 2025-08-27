@@ -77,15 +77,21 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
                 "content": msg["content"]
             })
         
-        # Get response from OpenAI using updated model with 2025 knowledge
+        # Get response from OpenAI using reliable model
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Updated to newer model with more recent knowledge
+            model="gpt-3.5-turbo",  # Back to reliable model that works with all API keys
             messages=openai_messages,
             max_tokens=1500,  # Increased for more detailed responses
             temperature=0.7
         )
         
         return response.choices[0].message.content
+    except openai.AuthenticationError:
+        return "Error: Invalid API key. Please check your OpenAI API key."
+    except openai.RateLimitError:
+        return "Error: Rate limit exceeded. Please try again later."
+    except openai.InsufficientQuotaError:
+        return "Error: Insufficient quota. Please check your OpenAI account billing."
     except Exception as e:
         return f"Error: {str(e)}"
 
