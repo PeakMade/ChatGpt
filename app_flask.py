@@ -101,10 +101,14 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
         return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
     except openai.RateLimitError:
         return "Error: Rate limit exceeded. Please try again later."
-    except openai.InsufficientQuotaError:
-        return "Error: Insufficient quota. Please check your OpenAI account billing."
     except Exception as e:
-        return f"Error: {str(e)}"
+        error_msg = str(e).lower()
+        if 'quota' in error_msg or 'billing' in error_msg:
+            return "Error: Insufficient quota. Please check your OpenAI account billing."
+        elif 'authentication' in error_msg or 'api key' in error_msg:
+            return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
+        else:
+            return f"Error: {str(e)}"
 
 def extract_text_from_pdf(pdf_file):
     """Extract text from PDF file"""
