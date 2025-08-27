@@ -47,23 +47,16 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         # Clean the API key of any whitespace
         api_key = api_key.strip()
         
-        # Debug info
-        print(f"API Key length: {len(api_key)}")
-        print(f"API Key starts with: {api_key[:10]}...")
-        print(f"API Key ends with: ...{api_key[-10:]}")
-        
         # Try basic OpenAI client initialization
         try:
             # Method 1: Basic client creation
             client = openai.OpenAI(api_key=api_key)
-        except Exception as e1:
-            print(f"Method 1 failed: {e1}")
+        except Exception:
             try:
                 # Method 2: Set API key globally (fallback for older versions)
                 openai.api_key = api_key
                 client = openai.OpenAI()
-            except Exception as e2:
-                print(f"Method 2 failed: {e2}")
+            except Exception:
                 # Method 3: Use older openai library approach
                 openai.api_key = api_key
                 return get_chat_response_legacy(messages, uploaded_content)
