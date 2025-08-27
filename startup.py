@@ -19,7 +19,7 @@ def main():
     
     # Start Streamlit
     cmd = [
-        sys.executable, '-m', 'streamlit', 'run', 'app.py',
+        sys.executable, '-m', 'streamlit', 'run', 'app_azure.py',
         '--server.port', port,
         '--server.address', '0.0.0.0',
         '--server.headless', 'true',

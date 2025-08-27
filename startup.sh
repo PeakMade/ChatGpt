@@ -11,4 +11,4 @@ pip install -r requirements.txt
 mkdir -p .streamlit
 
 # Start the application
-python -m streamlit run app.py --server.port=8000 --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false
+python -m streamlit run app_azure.py --server.port=8000 --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false
