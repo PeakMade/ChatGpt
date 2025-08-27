@@ -52,8 +52,21 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         print(f"API Key starts with: {api_key[:10]}...")
         print(f"API Key ends with: ...{api_key[-10:]}")
         
-        # Create client directly with the API key
-        client = openai.OpenAI(api_key=api_key)
+        # Try basic OpenAI client initialization
+        try:
+            # Method 1: Basic client creation
+            client = openai.OpenAI(api_key=api_key)
+        except Exception as e1:
+            print(f"Method 1 failed: {e1}")
+            try:
+                # Method 2: Set API key globally (fallback for older versions)
+                openai.api_key = api_key
+                client = openai.OpenAI()
+            except Exception as e2:
+                print(f"Method 2 failed: {e2}")
+                # Method 3: Use older openai library approach
+                openai.api_key = api_key
+                return get_chat_response_legacy(messages, uploaded_content)
         
         # Prepare messages for OpenAI
         openai_messages = []
@@ -109,6 +122,54 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
             return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
         else:
             return f"Error: {str(e)}"
+
+def get_chat_response_legacy(messages, uploaded_content=""):
+    """Legacy OpenAI API approach for older versions"""
+    try:
+        # Prepare messages for OpenAI
+        openai_messages = []
+        
+        # Add system prompt with 2025 knowledge context
+        system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
+        
+Key information about your knowledge:
+- Current date: August 27, 2025
+- You have access to information and events through 2025
+- You can discuss recent developments, technologies, and current events
+- When discussing dates or timelines, remember it's currently 2025
+
+Please provide helpful, accurate, and up-to-date responses based on your 2025 knowledge base."""
+
+        openai_messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
+        
+        # Add uploaded content as context if provided
+        if uploaded_content:
+            openai_messages.append({
+                "role": "system",
+                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions."
+            })
+        
+        # Add conversation history
+        for msg in messages:
+            openai_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+        
+        # Use legacy API call
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=openai_messages,
+            max_tokens=1500,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error (legacy): {str(e)}"
 
 def extract_text_from_pdf(pdf_file):
     """Extract text from PDF file"""
