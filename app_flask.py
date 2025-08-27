@@ -38,12 +38,15 @@ def get_openai_client(api_key):
         print(f"Error initializing OpenAI client: {e}")
         return None
 
-def get_chat_response(client, messages, uploaded_content=""):
+def get_chat_response(api_key, messages, uploaded_content=""):
     """Get response from OpenAI API"""
-    if not client:
-        return "Error: No OpenAI client available. Please check your API key."
+    if not api_key:
+        return "Error: No OpenAI API key provided."
         
     try:
+        # Create client directly with the API key
+        client = openai.OpenAI(api_key=api_key)
+        
         # Prepare messages for OpenAI
         openai_messages = []
         
@@ -136,11 +139,6 @@ def chat():
         # Update session API key
         session['api_key'] = api_key
         
-        # Initialize OpenAI client
-        client = get_openai_client(api_key)
-        if not client:
-            return jsonify({'error': 'Invalid API key'}), 400
-        
         # Add user message to session
         user_msg = {
             "role": "user",
@@ -149,8 +147,8 @@ def chat():
         }
         session['messages'].append(user_msg)
         
-        # Get AI response
-        ai_response = get_chat_response(client, session['messages'])
+        # Get AI response - pass API key directly
+        ai_response = get_chat_response(api_key, session['messages'])
         
         # Add AI response to session
         ai_msg = {
