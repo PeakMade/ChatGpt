@@ -28,13 +28,11 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
 
 def get_openai_client(api_key):
-    """Initialize OpenAI client with API key and test it"""
+    """Initialize OpenAI client with API key"""
     if not api_key:
         return None
     try:
         client = openai.OpenAI(api_key=api_key)
-        # Test the API key by making a simple request
-        client.models.list()
         return client
     except Exception as e:
         print(f"Error initializing OpenAI client: {e}")
@@ -129,17 +127,13 @@ def chat():
         if not api_key:
             return jsonify({'error': 'Please enter your OpenAI API key'}), 400
         
-        # Validate API key format
-        if not api_key.startswith('sk-'):
-            return jsonify({'error': 'Invalid API key format. OpenAI API keys start with "sk-"'}), 400
-        
         # Update session API key
         session['api_key'] = api_key
         
-        # Initialize OpenAI client and test the API key
+        # Initialize OpenAI client
         client = get_openai_client(api_key)
         if not client:
-            return jsonify({'error': 'Invalid or expired API key. Please check your OpenAI API key.'}), 400
+            return jsonify({'error': 'Invalid API key'}), 400
         
         # Add user message to session
         user_msg = {
