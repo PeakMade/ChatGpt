@@ -47,6 +47,22 @@ def get_chat_response(client, messages, uploaded_content=""):
         # Prepare messages for OpenAI
         openai_messages = []
         
+        # Add system prompt with 2025 knowledge context
+        system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
+        
+Key information about your knowledge:
+- Current date: August 27, 2025
+- You have access to information and events through 2025
+- You can discuss recent developments, technologies, and current events
+- When discussing dates or timelines, remember it's currently 2025
+
+Please provide helpful, accurate, and up-to-date responses based on your 2025 knowledge base."""
+
+        openai_messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
+        
         # Add uploaded content as context if provided
         if uploaded_content:
             openai_messages.append({
@@ -61,11 +77,11 @@ def get_chat_response(client, messages, uploaded_content=""):
                 "content": msg["content"]
             })
         
-        # Get response from OpenAI using new client API
+        # Get response from OpenAI using updated model with 2025 knowledge
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",  # Updated to newer model with more recent knowledge
             messages=openai_messages,
-            max_tokens=1000,
+            max_tokens=1500,  # Increased for more detailed responses
             temperature=0.7
         )
         
