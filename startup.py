@@ -1,5 +1,5 @@
 """
-Azure App Service startup script for Streamlit ChatGPT Clone
+Azure App Service startup script for Flask AI BOOST App
 """
 import os
 import sys
@@ -11,24 +11,16 @@ def main():
     # Get the port from environment variable (set by Azure)
     port = os.environ.get('SERVER_PORT', '8000')
     
-    # Set environment variables for Streamlit
-    os.environ['STREAMLIT_SERVER_PORT'] = port
-    os.environ['STREAMLIT_SERVER_ADDRESS'] = '0.0.0.0'
-    os.environ['STREAMLIT_SERVER_HEADLESS'] = 'true'
-    os.environ['STREAMLIT_BROWSER_GATHER_USAGE_STATS'] = 'false'
-    
-    # Start Streamlit
+    # Start Flask app with Gunicorn
     cmd = [
-        sys.executable, '-m', 'streamlit', 'run', 'app_azure.py',
-        '--server.port', port,
-        '--server.address', '0.0.0.0',
-        '--server.headless', 'true',
-        '--server.enableCORS', 'false',
-        '--server.enableXsrfProtection', 'false',
-        '--browser.gatherUsageStats', 'false'
+        sys.executable, '-m', 'gunicorn', 
+        'app_flask:app',
+        '--bind', f'0.0.0.0:{port}',
+        '--workers', '1',
+        '--timeout', '120'
     ]
     
-    print(f"Starting Streamlit on port {port}")
+    print(f"Starting Flask app on port {port}")
     print(f"Command: {' '.join(cmd)}")
     
     # Execute the command
