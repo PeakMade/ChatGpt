@@ -57,9 +57,8 @@ def get_chat_response(api_key, messages, uploaded_content=""):
                 openai.api_key = api_key
                 client = openai.OpenAI()
             except Exception:
-                # Method 3: Use older openai library approach
-                openai.api_key = api_key
-                return get_chat_response_legacy(messages, uploaded_content)
+                # Method 3: Use simplified approach
+                return get_chat_response_legacy(api_key, messages, uploaded_content)
         
         # Prepare messages for OpenAI
         openai_messages = []
@@ -116,9 +115,11 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
         else:
             return f"Error: {str(e)}"
 
-def get_chat_response_legacy(messages, uploaded_content=""):
-    """Legacy OpenAI API approach for older versions"""
+def get_chat_response_legacy(api_key, messages, uploaded_content=""):
+    """Simplified OpenAI API approach"""
     try:
+        # Create client with explicit API key
+        client = openai.OpenAI(api_key=api_key)
         # Prepare messages for OpenAI
         openai_messages = []
         
@@ -152,8 +153,7 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
                 "content": msg["content"]
             })
         
-        # Use modern API call with globally set API key
-        client = openai.OpenAI()
+        # Use modern API call with explicit client
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=openai_messages,
