@@ -537,6 +537,20 @@
 
         document.getElementById('apiKey').addEventListener('input', updateApiStatus);
 
+        function resetCopyButton() {
+            const btn = document.getElementById('copyChatBtn');
+            if (btn.classList.contains('copy-success')) {
+                btn.innerHTML = `
+                    <svg class="copy-icon" viewBox="0 0 24 24">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy
+                `;
+                btn.classList.remove('copy-success');
+            }
+        }
+
         async function sendMessage() {
             const messageInput = document.getElementById('messageInput');
             const apiKey = document.getElementById('apiKey').value.trim();
@@ -556,6 +570,9 @@
             messageInput.value = '';
             showThinking(true);
             clearError();
+            
+            // Reset copy button since chat is changing
+            resetCopyButton();
 
             // Add user message to chat
             addMessageToChat('user', message);
@@ -737,6 +754,8 @@
                     `;
                     uploadedContent = '';
                     showUploadStatus('', '');
+                    // Reset copy button since chat is cleared
+                    resetCopyButton();
                 }
             } catch (error) {
                 showError('Failed to clear chat');
@@ -744,6 +763,22 @@
         }
 
         function copyFullChat() {
+            const btn = document.getElementById('copyChatBtn');
+            
+            // If already in copied state, reset to normal
+            if (btn.classList.contains('copy-success')) {
+                btn.innerHTML = `
+                    <svg class="copy-icon" viewBox="0 0 24 24">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy
+                `;
+                btn.classList.remove('copy-success');
+                return;
+            }
+            
+            // Proceed with copying
             const chatMessages = document.getElementById('chatMessages');
             const messages = chatMessages.querySelectorAll('.user-message, .assistant-message');
             
@@ -768,10 +803,7 @@
             
             // Copy to clipboard
             navigator.clipboard.writeText(chatText).then(() => {
-                // Show success feedback
-                const btn = document.getElementById('copyChatBtn');
-                const originalHTML = btn.innerHTML;
-                
+                // Show success feedback - stays until clicked again
                 btn.innerHTML = `
                     <svg class="copy-icon" viewBox="0 0 24 24">
                         <path d="M20 6L9 17l-5-5"></path>
@@ -779,12 +811,7 @@
                     Copied!
                 `;
                 btn.classList.add('copy-success');
-                
-                // Reset after 2 seconds
-                setTimeout(() => {
-                    btn.innerHTML = originalHTML;
-                    btn.classList.remove('copy-success');
-                }, 2000);
+                // No timeout - stays green until clicked again
             }).catch(err => {
                 // Fallback for older browsers
                 const textArea = document.createElement('textarea');
@@ -794,7 +821,14 @@
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
                 
-                showError('Chat copied to clipboard!');
+                // Show success state for fallback too
+                btn.innerHTML = `
+                    <svg class="copy-icon" viewBox="0 0 24 24">
+                        <path d="M20 6L9 17l-5-5"></path>
+                    </svg>
+                    Copied!
+                `;
+                btn.classList.add('copy-success');
             });
         }
 
