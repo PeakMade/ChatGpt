@@ -518,6 +518,126 @@
             margin-top: 5px;
         }
 
+        /* AI Status Window */
+        .ai-status-window {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 15px;
+            min-width: 200px;
+            z-index: 1000;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .ai-status-window.collapsed {
+            transform: translateX(calc(100% - 40px));
+        }
+
+        .ai-status-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .ai-status-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            flex: 1;
+        }
+
+        .ai-status-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+            font-size: 16px;
+        }
+
+        .ai-status-toggle:hover {
+            background: #f8f9fa;
+        }
+
+        .ai-status-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ai-status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .ai-status-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .ai-status-value {
+            color: #333;
+            font-weight: 600;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .ai-status-badge {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .token-progress {
+            width: 100%;
+            height: 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .token-progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        @media (max-width: 768px) {
+            .ai-status-window {
+                top: 10px;
+                right: 10px;
+                min-width: 180px;
+                padding: 12px;
+            }
+
+            .ai-status-title {
+                font-size: 13px;
+            }
+
+            .ai-status-item {
+                font-size: 11px;
+            }
+        }
+
         @media (max-width: 768px) {
             .content-wrapper {
                 padding: 10px;
@@ -634,6 +754,39 @@
     </style>
 </head>
 <body>
+    <!-- AI Status Window -->
+    <div class="ai-status-window" id="aiStatusWindow">
+        <div class="ai-status-header" onclick="toggleStatusWindow()">
+            <div class="ai-status-title">AI Engine Status</div>
+            <button class="ai-status-toggle" id="statusToggle">▼</button>
+        </div>
+        <div class="ai-status-content" id="statusContent">
+            <div class="ai-status-item">
+                <span class="ai-status-label">Model:</span>
+                <span class="ai-status-value" id="currentModel">GPT-4o-mini</span>
+            </div>
+            <div class="ai-status-item">
+                <span class="ai-status-label">Temperature:</span>
+                <span class="ai-status-value" id="currentTemp">0.7</span>
+            </div>
+            <div class="ai-status-item">
+                <span class="ai-status-label">Max Tokens:</span>
+                <span class="ai-status-value" id="maxTokens">1,500</span>
+            </div>
+            <div class="ai-status-item">
+                <span class="ai-status-label">Last Response:</span>
+                <span class="ai-status-value" id="lastTokens">0</span>
+            </div>
+            <div class="ai-status-item">
+                <span class="ai-status-label">Status:</span>
+                <span class="ai-status-badge" id="aiStatus">Ready</span>
+            </div>
+            <div class="token-progress" title="Token usage progress">
+                <div class="token-progress-bar" id="tokenProgressBar"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="header-container">
         <div class="logo logo-clean">
             <img src="https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcTQp9CsCdZ6lFTwb9RO4FLBRF5gDF1DuoBILJzmoyOiwi486qh3" alt="PEAKMADE Logo">
@@ -719,6 +872,64 @@
         let uploadedContent = '';
         let currentConversationId = null;
         let conversations = JSON.parse(localStorage.getItem('chatConversations') || '[]');
+        
+        // AI Status Window Management
+        function toggleStatusWindow() {
+            const statusWindow = document.getElementById('aiStatusWindow');
+            const statusContent = document.getElementById('statusContent');
+            const statusToggle = document.getElementById('statusToggle');
+            
+            if (statusWindow.classList.contains('collapsed')) {
+                statusWindow.classList.remove('collapsed');
+                statusToggle.textContent = '▼';
+            } else {
+                statusWindow.classList.add('collapsed');
+                statusToggle.textContent = '◀';
+            }
+        }
+
+        function updateAIStatus(status, tokensUsed = null) {
+            const statusBadge = document.getElementById('aiStatus');
+            const lastTokens = document.getElementById('lastTokens');
+            const progressBar = document.getElementById('tokenProgressBar');
+            
+            // Update status badge
+            statusBadge.textContent = status;
+            statusBadge.className = 'ai-status-badge';
+            
+            // Color coding for different statuses
+            if (status === 'Thinking...') {
+                statusBadge.style.background = 'linear-gradient(135deg, #ffc107 0%, #fd7e14 100%)';
+            } else if (status === 'Ready') {
+                statusBadge.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+            } else if (status === 'Error') {
+                statusBadge.style.background = 'linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)';
+            }
+            
+            // Update token usage
+            if (tokensUsed !== null) {
+                lastTokens.textContent = tokensUsed.toLocaleString();
+                
+                // Update progress bar (assuming 1500 max tokens)
+                const maxTokens = 1500;
+                const percentage = Math.min((tokensUsed / maxTokens) * 100, 100);
+                progressBar.style.width = percentage + '%';
+                
+                // Change color based on usage
+                if (percentage > 80) {
+                    progressBar.style.background = 'linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)';
+                } else if (percentage > 60) {
+                    progressBar.style.background = 'linear-gradient(135deg, #ffc107 0%, #fd7e14 100%)';
+                } else {
+                    progressBar.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+                }
+            }
+        }
+
+        function estimateTokens(text) {
+            // Rough estimation: ~4 characters per token
+            return Math.ceil(text.length / 4);
+        }
         
         // Conversation Management
         function generateConversationId() {
@@ -880,6 +1091,9 @@
                 currentConversationId = generateConversationId();
             }
             renderConversationsList();
+            
+            // Initialize AI status window
+            updateAIStatus('Ready');
         });
         
         function handleKeyPress(event) {
@@ -943,6 +1157,9 @@
             showThinking(true);
             clearError();
             
+            // Update AI status to thinking
+            updateAIStatus('Thinking...');
+            
             // Reset copy button since chat is changing
             resetCopyButton();
 
@@ -968,14 +1185,22 @@
                 const data = await response.json();
 
                 if (response.ok) {
+                    // Estimate tokens used in response
+                    const estimatedTokens = estimateTokens(data.ai_response);
+                    
+                    // Update AI status to ready with token count
+                    updateAIStatus('Ready', estimatedTokens);
+                    
                     // Add AI message with typewriter effect
                     addMessageToChatWithTypewriter('assistant', data.ai_response);
                     // Save conversation after successful response
                     setTimeout(() => saveConversation(), 1000);
                 } else {
+                    updateAIStatus('Error');
                     showError(data.error || 'An error occurred');
                 }
             } catch (error) {
+                updateAIStatus('Error');
                 showError('Network error: ' + error.message);
             } finally {
                 showThinking(false);
