@@ -195,7 +195,36 @@ def api_key_status():
     # Smart check - only consider it configured if it's a valid API key
     env_api_key = os.environ.get('OPENAI_API_KEY', '').strip()
     has_env_key = bool(env_api_key and env_api_key.startswith('sk-') and len(env_api_key) > 20)
+    
+    # Debug logging
+    print(f"Environment API key check:")
+    print(f"  - Raw env value exists: {bool(os.environ.get('OPENAI_API_KEY'))}")
+    print(f"  - After strip exists: {bool(env_api_key)}")
+    print(f"  - Starts with sk-: {env_api_key.startswith('sk-') if env_api_key else False}")
+    print(f"  - Length > 20: {len(env_api_key) > 20 if env_api_key else False}")
+    print(f"  - Final result: {has_env_key}")
+    
     return jsonify({'has_environment_key': has_env_key})
+
+@app.route('/debug-env')
+def debug_env():
+    """Debug endpoint to check environment variables (safely)"""
+    env_vars = {}
+    for key in os.environ:
+        if 'API' in key.upper() or 'OPENAI' in key.upper():
+            # Show length and first/last few characters for API keys
+            value = os.environ[key]
+            if len(value) > 10:
+                env_vars[key] = f"{value[:5]}...{value[-5:]} (length: {len(value)})"
+            else:
+                env_vars[key] = f"<hidden> (length: {len(value)})"
+        elif key in ['ENVIRONMENT', 'NODE_ENV', 'PYTHON_VERSION', 'PORT']:
+            env_vars[key] = os.environ[key]
+    
+    return jsonify({
+        'environment_variables': env_vars,
+        'total_env_vars': len(os.environ)
+    })
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -208,6 +237,13 @@ def chat():
         # Smart API key handling - check for valid environment variable first
         env_api_key = os.environ.get('OPENAI_API_KEY', '').strip()
         
+        # Debug logging for environment variable
+        print(f"Chat request debug:")
+        print(f"  - Environment key exists: {bool(env_api_key)}")
+        print(f"  - Environment key length: {len(env_api_key) if env_api_key else 0}")
+        print(f"  - User provided key: {bool(user_api_key)}")
+        print(f"  - User key length: {len(user_api_key) if user_api_key else 0}")
+        
         # Only use environment key if it's actually valid (starts with sk- and reasonable length)
         if env_api_key and env_api_key.startswith('sk-') and len(env_api_key) > 20:
             api_key = env_api_key
@@ -217,7 +253,7 @@ def chat():
             api_source = "User input"
         
         print(f"Using API key source: {api_source}")
-        print(f"API key length: {len(api_key) if api_key else 0}")
+        print(f"Final API key length: {len(api_key) if api_key else 0}")
         
         if not user_message:
             return jsonify({'error': 'Message cannot be empty'}), 400
