@@ -1042,20 +1042,6 @@
                     if (apiKeySection) {
                         apiKeySection.style.display = 'none';
                     }
-                    
-                    // Show a message that API is configured in the sidebar
-                    const sidebar = document.querySelector('.sidebar');
-                    const configuredMsg = document.createElement('div');
-                    configuredMsg.style.color = '#27AE60';
-                    configuredMsg.style.fontSize = '14px';
-                    configuredMsg.style.marginBottom = '20px';
-                    configuredMsg.style.textAlign = 'center';
-                    configuredMsg.style.padding = '15px';
-                    configuredMsg.style.background = '#d4edda';
-                    configuredMsg.style.borderRadius = '8px';
-                    configuredMsg.style.border = '1px solid #c3e6cb';
-                    configuredMsg.innerHTML = '✓ OpenAI API configured by administrator';
-                    sidebar.insertBefore(configuredMsg, sidebar.firstChild);
                 }
             } catch (error) {
                 console.log('Could not check API key status:', error);
