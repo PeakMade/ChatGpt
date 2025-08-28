@@ -153,6 +153,13 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            position: relative;
+        }
+
+        .input-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
         }
 
         .chat-input {
@@ -372,6 +379,74 @@
                 order: 1;
             }
         }
+
+        .copy-chat-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+            padding: 0 20px;
+        }
+
+        .copy-chat-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.2);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+        }
+
+        .copy-chat-btn:hover {
+            background: rgba(40, 167, 69, 0.15);
+            border-color: rgba(40, 167, 69, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+        }
+
+        .copy-chat-btn:active {
+            transform: translateY(0);
+        }
+
+        .copy-icon {
+            width: 12px;
+            height: 12px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .copy-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+            color: white !important;
+            border-color: #28a745 !important;
+            animation: copyPulse 0.6s ease-out;
+        }
+
+        @keyframes copyPulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+            }
+            25% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 8px rgba(40, 167, 69, 0.4);
+            }
+            50% {
+                transform: scale(1.02);
+                box-shadow: 0 0 0 12px rgba(40, 167, 69, 0.2);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 16px rgba(40, 167, 69, 0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -417,7 +492,16 @@
             <div class="chat-input-container">
                 <div class="input-group">
                     <input type="text" id="messageInput" class="chat-input" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
-                    <button onclick="sendMessage()" class="btn">Send</button>
+                    <div class="input-actions">
+                        <button onclick="sendMessage()" class="btn">Send</button>
+                        <button onclick="copyFullChat()" class="copy-chat-btn" id="copyChatBtn" title="Copy entire chat">
+                            <svg class="copy-icon" viewBox="0 0 24 24">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            Copy
+                        </button>
+                    </div>
                 </div>
                 <div id="thinking" class="thinking-container" style="display: none;">
                     <div class="spinner"></div>
@@ -657,6 +741,61 @@
             } catch (error) {
                 showError('Failed to clear chat');
             }
+        }
+
+        function copyFullChat() {
+            const chatMessages = document.getElementById('chatMessages');
+            const messages = chatMessages.querySelectorAll('.user-message, .assistant-message');
+            
+            let chatText = 'AI BOOST Chat Conversation\n';
+            chatText += '================================\n\n';
+            
+            messages.forEach((message, index) => {
+                const isUser = message.classList.contains('user-message');
+                const isAssistant = message.classList.contains('assistant-message');
+                
+                if (isUser) {
+                    const content = message.textContent.replace('You: ', '').trim();
+                    chatText += `👤 User: ${content}\n\n`;
+                } else if (isAssistant) {
+                    const content = message.textContent.replace('AI Assistant: ', '').trim();
+                    chatText += `🤖 AI Assistant: ${content}\n\n`;
+                }
+            });
+            
+            chatText += `Generated on: ${new Date().toLocaleString()}\n`;
+            chatText += 'Powered by AI BOOST - PeakMade Real Estate';
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(chatText).then(() => {
+                // Show success feedback
+                const btn = document.getElementById('copyChatBtn');
+                const originalHTML = btn.innerHTML;
+                
+                btn.innerHTML = `
+                    <svg class="copy-icon" viewBox="0 0 24 24">
+                        <path d="M20 6L9 17l-5-5"></path>
+                    </svg>
+                    Copied!
+                `;
+                btn.classList.add('copy-success');
+                
+                // Reset after 2 seconds
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('copy-success');
+                }, 2000);
+            }).catch(err => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = chatText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                showError('Chat copied to clipboard!');
+            });
         }
 
         // Load existing messages on page load

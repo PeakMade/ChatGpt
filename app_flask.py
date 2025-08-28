@@ -13,6 +13,17 @@ import PyPDF2
 import io
 import json
 
+# Azure Key Vault imports
+try:
+    from azure.identity import DefaultAzureCredential
+    from azure.keyvault.secrets import SecretClient
+    AZURE_AVAILABLE = True
+except ImportError:
+    AZURE_AVAILABLE = False
+
+# Configuration
+import config
+
 # Load environment variables from .env file for local development
 try:
     from dotenv import load_dotenv
@@ -23,9 +34,41 @@ except ImportError:
 
 app = Flask(__name__)
 # Use a consistent secret key for development, secure random for production
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production-12345')
+app.secret_key = config.SECRET_KEY
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
+
+def get_api_key_from_keyvault():
+    """Get OpenAI API key from Azure Key Vault"""
+    if not AZURE_AVAILABLE:
+        return None
+    
+    try:
+        # Use managed identity for authentication
+        credential = DefaultAzureCredential()
+        client = SecretClient(vault_url=config.KEYVAULT_URL, credential=credential)
+        
+        # Retrieve the secret
+        secret = client.get_secret(config.OPENAI_SECRET_NAME)
+        return secret.value
+    except Exception as e:
+        # Key Vault not available or configured, fall back to environment variables
+        return None
+
+def get_api_key():
+    """Get API key from Key Vault, environment variables, or return None for user input"""
+    # Try Azure Key Vault first (production)
+    keyvault_key = get_api_key_from_keyvault()
+    if keyvault_key and keyvault_key.startswith('sk-') and len(keyvault_key) > 20:
+        return keyvault_key
+    
+    # Fall back to environment variable (local development)
+    env_key = os.environ.get('OPENAI_API_KEY', '').strip()
+    if env_key and env_key.startswith('sk-') and len(env_key) > 20:
+        return env_key
+    
+    # No valid key found, require user input
+    return None
 
 def get_openai_client(api_key):
     """Initialize OpenAI client with API key"""
@@ -188,12 +231,12 @@ def index():
 
 @app.route('/api-key-status')
 def api_key_status():
-    """Check if API key is configured in environment"""
-    env_api_key = os.environ.get('OPENAI_API_KEY', '').strip()
-    has_env_key = bool(env_api_key and env_api_key.startswith('sk-') and len(env_api_key) > 20)
+    """Check if API key is configured in Key Vault or environment"""
+    api_key = get_api_key()
+    has_key = bool(api_key)
     
     return jsonify({
-        'has_environment_key': has_env_key
+        'has_environment_key': has_key
     })
 
 @app.route('/chat', methods=['POST'])
@@ -204,12 +247,12 @@ def chat():
         user_message = data.get('message', '').strip()
         user_api_key = data.get('api_key', '').strip()
         
-        # Smart API key handling - check environment first
-        env_api_key = os.environ.get('OPENAI_API_KEY', '').strip()
+        # Smart API key handling - check Key Vault and environment first
+        secure_api_key = get_api_key()
         
-        # Use environment key if available, otherwise user input
-        if env_api_key and env_api_key.startswith('sk-') and len(env_api_key) > 20:
-            api_key = env_api_key
+        # Use secure key (Key Vault/environment) if available, otherwise user input
+        if secure_api_key:
+            api_key = secure_api_key
         else:
             api_key = user_api_key
         
