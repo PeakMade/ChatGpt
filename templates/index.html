@@ -264,6 +264,85 @@
             display: none;
             color: #28a745;
             font-style: italic;
+            text-align: center;
+            padding: 20px;
+            margin: 10px 0;
+        }
+
+        .thinking-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-left: 3px solid #28a745;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #e3e3e3;
+            border-top: 5px solid #28a745;
+            border-right: 5px solid #28a745;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite, pulse 2s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+
+        .thinking-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: #28a745;
+        }
+
+        .thinking-dots::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0% { 
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4);
+            }
+            50% { 
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+            }
+            100% { 
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4);
+            }
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        .typewriter {
+            border-right: 2px solid #28a745;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { border-color: #28a745; }
+            51%, 100% { border-color: transparent; }
+        }
+
+        .assistant-message.typing {
+            position: relative;
         }
 
         .error {
@@ -340,7 +419,10 @@
                     <input type="text" id="messageInput" class="chat-input" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
                     <button onclick="sendMessage()" class="btn">Send</button>
                 </div>
-                <div id="loading" class="loading">AI is thinking...</div>
+                <div id="thinking" class="thinking-container" style="display: none;">
+                    <div class="spinner"></div>
+                    <div class="thinking-text">AI is thinking<span class="thinking-dots"></span></div>
+                </div>
                 <div id="errorMessage" class="error"></div>
             </div>
         </div>
@@ -386,9 +468,9 @@
                 return;
             }
 
-            // Clear input and show loading
+            // Clear input and show thinking animation
             messageInput.value = '';
-            showLoading(true);
+            showThinking(true);
             clearError();
 
             // Add user message to chat
@@ -410,14 +492,15 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    addMessageToChat('assistant', data.ai_response);
+                    // Add AI message with typewriter effect
+                    addMessageToChatWithTypewriter('assistant', data.ai_response);
                 } else {
                     showError(data.error || 'An error occurred');
                 }
             } catch (error) {
                 showError('Network error: ' + error.message);
             } finally {
-                showLoading(false);
+                showThinking(false);
             }
         }
 
@@ -433,8 +516,75 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        function addMessageToChatWithTypewriter(role, content) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}-message typing`;
+            
+            const roleLabel = role === 'user' ? 'You' : 'AI Assistant';
+            const contentSpan = document.createElement('span');
+            contentSpan.className = 'typewriter';
+            
+            messageDiv.innerHTML = `<strong>${roleLabel}:</strong> `;
+            messageDiv.appendChild(contentSpan);
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Typewriter effect
+            let index = 0;
+            const typeSpeed = 30; // milliseconds between characters
+            
+            function typeCharacter() {
+                if (index < content.length) {
+                    contentSpan.textContent += content.charAt(index);
+                    index++;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    setTimeout(typeCharacter, typeSpeed);
+                } else {
+                    // Remove typewriter cursor when done
+                    contentSpan.classList.remove('typewriter');
+                    messageDiv.classList.remove('typing');
+                }
+            }
+            
+            // Start typing after a short delay
+            setTimeout(typeCharacter, 300);
+        }
+
+        // Check API key status on page load
+        async function checkApiKeyStatus() {
+            try {
+                const response = await fetch('/api-key-status');
+                const data = await response.json();
+                
+                if (data.has_environment_key) {
+                    // Hide API key input if environment variable is configured
+                    const apiKeyGroup = document.querySelector('.api-key-group');
+                    if (apiKeyGroup) {
+                        apiKeyGroup.style.display = 'none';
+                    }
+                    
+                    // Show a message that API is configured
+                    const form = document.querySelector('.chat-form');
+                    const configuredMsg = document.createElement('p');
+                    configuredMsg.style.color = '#27AE60';
+                    configuredMsg.style.fontSize = '14px';
+                    configuredMsg.style.marginBottom = '20px';
+                    configuredMsg.style.textAlign = 'center';
+                    configuredMsg.innerHTML = '✓ OpenAI API configured by administrator';
+                    form.insertBefore(configuredMsg, form.firstChild);
+                }
+            } catch (error) {
+                console.log('Could not check API key status:', error);
+            }
+        }
+
+        // Call on page load
+        document.addEventListener('DOMContentLoaded', checkApiKeyStatus);
+
+        function showThinking(show) {
+            document.getElementById('thinking').style.display = show ? 'block' : 'none';
         }
 
         function showError(message) {

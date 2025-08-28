@@ -22,8 +22,8 @@ except ImportError:
     pass
 
 app = Flask(__name__)
-# Generate a secure secret key for production
-app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24).hex())
+# Use a consistent secret key for development, secure random for production
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production-12345')
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
 
@@ -93,9 +93,9 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
                 "content": msg["content"]
             })
         
-        # Get response from OpenAI using reliable model
+        # Get response from OpenAI using GPT-3.5-turbo
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Back to reliable model that works with all API keys
+            model="gpt-3.5-turbo",  # Reliable model that works with all API keys
             messages=openai_messages,
             max_tokens=1500,  # Increased for more detailed responses
             temperature=0.7
@@ -153,9 +153,9 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
                 "content": msg["content"]
             })
         
-        # Use modern API call with explicit client
+        # Use modern API call with GPT-3.5-turbo
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo",  # Reliable model that works with all API keys
             messages=openai_messages,
             max_tokens=1500,
             temperature=0.7
@@ -189,16 +189,35 @@ def index():
     
     return render_template('index.html')
 
+@app.route('/api-key-status')
+def api_key_status():
+    """Check if API key is configured in environment"""
+    # Smart check - only consider it configured if it's a valid API key
+    env_api_key = os.environ.get('OPENAI_API_KEY', '').strip()
+    has_env_key = bool(env_api_key and env_api_key.startswith('sk-') and len(env_api_key) > 20)
+    return jsonify({'has_environment_key': has_env_key})
+
 @app.route('/chat', methods=['POST'])
 def chat():
     """Handle chat messages"""
     try:
         data = request.get_json()
         user_message = data.get('message', '').strip()
-        api_key = data.get('api_key', '').strip()
+        user_api_key = data.get('api_key', '').strip()
         
-        print(f"Received API key length: {len(api_key) if api_key else 0}")
-        print(f"API key first 10 chars: {api_key[:10] if api_key else 'None'}")
+        # Smart API key handling - check for valid environment variable first
+        env_api_key = os.environ.get('OPENAI_API_KEY', '').strip()
+        
+        # Only use environment key if it's actually valid (starts with sk- and reasonable length)
+        if env_api_key and env_api_key.startswith('sk-') and len(env_api_key) > 20:
+            api_key = env_api_key
+            api_source = "Azure environment"
+        else:
+            api_key = user_api_key
+            api_source = "User input"
+        
+        print(f"Using API key source: {api_source}")
+        print(f"API key length: {len(api_key) if api_key else 0}")
         
         if not user_message:
             return jsonify({'error': 'Message cannot be empty'}), 400
@@ -279,10 +298,23 @@ def clear_chat():
 @app.route('/get_messages')
 def get_messages():
     """Get current chat messages"""
-    return jsonify({
-        'messages': session.get('messages', []),
-        'api_key': session.get('api_key', '')
-    })
+    try:
+        # Ensure session variables exist
+        if 'messages' not in session:
+            session['messages'] = []
+        if 'api_key' not in session:
+            session['api_key'] = ''
+            
+        return jsonify({
+            'messages': session.get('messages', []),
+            'api_key': session.get('api_key', '')
+        })
+    except Exception as e:
+        print(f"Error in get_messages: {e}")
+        return jsonify({
+            'messages': [],
+            'api_key': ''
+        })
 
 if __name__ == '__main__':
     # For local development

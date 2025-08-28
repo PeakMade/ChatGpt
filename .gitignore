@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Test files - do not commit
+test_api_key.py
+*_test.py
+
 # C extensions
 *.so
 
