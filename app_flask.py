@@ -235,8 +235,17 @@ def api_key_status():
     api_key = get_api_key()
     has_key = bool(api_key)
     
+    # Debug info (remove after testing)
+    debug_info = {
+        'keyvault_available': AZURE_AVAILABLE,
+        'keyvault_url': config.KEYVAULT_URL,
+        'env_var_exists': bool(os.environ.get('OPENAI_API_KEY')),
+        'has_key': has_key
+    }
+    
     return jsonify({
-        'has_environment_key': has_key
+        'has_environment_key': has_key,
+        'debug': debug_info
     })
 
 @app.route('/chat', methods=['POST'])

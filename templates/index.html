@@ -553,15 +553,21 @@
 
         async function sendMessage() {
             const messageInput = document.getElementById('messageInput');
-            const apiKey = document.getElementById('apiKey').value.trim();
             const message = messageInput.value.trim();
             
             if (!message) {
                 showError('Please enter a message');
                 return;
             }
+
+            // Check if we have environment API key or user input
+            const apiKeyInput = document.getElementById('apiKey');
+            const apiKey = apiKeyInput.value.trim();
+            const apiKeySection = document.querySelector('.api-key-section');
+            const hasEnvironmentKey = apiKeySection && apiKeySection.style.display === 'none';
             
-            if (!apiKey) {
+            // Only require API key input if environment key is not available
+            if (!hasEnvironmentKey && !apiKey) {
                 showError('Please enter your OpenAI API key');
                 return;
             }
@@ -578,6 +584,9 @@
             addMessageToChat('user', message);
 
             try {
+                // Get API key for request (empty string if using environment key)
+                const apiKeyForRequest = hasEnvironmentKey ? '' : apiKey;
+                
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: {
@@ -585,7 +594,7 @@
                     },
                     body: JSON.stringify({
                         message: message,
-                        api_key: apiKey,
+                        api_key: apiKeyForRequest,
                         uploaded_content: uploadedContent
                     })
                 });
@@ -834,6 +843,9 @@
 
         // Load existing messages on page load
         window.addEventListener('load', async () => {
+            // Check API key status first
+            await checkApiKeyStatus();
+            
             try {
                 const response = await fetch('/get_messages');
                 const data = await response.json();
