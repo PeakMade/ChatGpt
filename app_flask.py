@@ -192,38 +192,89 @@ def index():
 @app.route('/api-key-status')
 def api_key_status():
     """Check if API key is configured in environment"""
-    # Smart check - only consider it configured if it's a valid API key
-    env_api_key = os.environ.get('OPENAI_API_KEY', '').strip()
+    # Try multiple possible environment variable names
+    possible_keys = ['OPENAI_API_KEY', 'OPENAI_API_KEY_VALUE', 'AZURE_OPENAI_KEY']
+    env_api_key = None
+    key_source = None
+    
+    for key_name in possible_keys:
+        test_key = os.environ.get(key_name, '').strip()
+        if test_key:
+            env_api_key = test_key
+            key_source = key_name
+            break
+    
     has_env_key = bool(env_api_key and env_api_key.startswith('sk-') and len(env_api_key) > 20)
     
     # Debug logging
     print(f"Environment API key check:")
-    print(f"  - Raw env value exists: {bool(os.environ.get('OPENAI_API_KEY'))}")
-    print(f"  - After strip exists: {bool(env_api_key)}")
-    print(f"  - Starts with sk-: {env_api_key.startswith('sk-') if env_api_key else False}")
-    print(f"  - Length > 20: {len(env_api_key) > 20 if env_api_key else False}")
+    print(f"  - Checked keys: {possible_keys}")
+    print(f"  - Found key in: {key_source}")
+    print(f"  - Key exists: {bool(env_api_key)}")
+    if env_api_key:
+        print(f"  - Starts with sk-: {env_api_key.startswith('sk-')}")
+        print(f"  - Length: {len(env_api_key)}")
+        print(f"  - First 10 chars: {env_api_key[:10]}")
     print(f"  - Final result: {has_env_key}")
     
-    return jsonify({'has_environment_key': has_env_key})
+    return jsonify({
+        'has_environment_key': has_env_key,
+        'key_source': key_source,
+        'key_length': len(env_api_key) if env_api_key else 0
+    })
 
 @app.route('/debug-env')
 def debug_env():
-    """Debug endpoint to check environment variables (safely)"""
+    """Debug endpoint to check environment variables (comprehensive Azure check)"""
+    import platform
+    
+    # Safe environment variable collection
     env_vars = {}
+    api_related_vars = {}
+    azure_vars = {}
+    
     for key in os.environ:
-        if 'API' in key.upper() or 'OPENAI' in key.upper():
-            # Show length and first/last few characters for API keys
-            value = os.environ[key]
+        value = os.environ[key]
+        
+        # API-related variables
+        if any(term in key.upper() for term in ['API', 'OPENAI', 'KEY']):
             if len(value) > 10:
-                env_vars[key] = f"{value[:5]}...{value[-5:]} (length: {len(value)})"
+                api_related_vars[key] = f"{value[:5]}...{value[-5:]} (length: {len(value)})"
             else:
-                env_vars[key] = f"<hidden> (length: {len(value)})"
-        elif key in ['ENVIRONMENT', 'NODE_ENV', 'PYTHON_VERSION', 'PORT']:
-            env_vars[key] = os.environ[key]
+                api_related_vars[key] = f"<hidden> (length: {len(value)})"
+        
+        # Azure App Service variables
+        elif key.startswith('WEBSITE_') or key.startswith('SCM_') or key in ['AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET']:
+            azure_vars[key] = value
+        
+        # General environment info
+        elif key in ['ENVIRONMENT', 'NODE_ENV', 'PYTHON_VERSION', 'PORT', 'PATH']:
+            env_vars[key] = value[:100] + "..." if len(value) > 100 else value
+    
+    # Check for common OpenAI key patterns
+    possible_keys = ['OPENAI_API_KEY', 'OPENAI_API_KEY_VALUE', 'AZURE_OPENAI_KEY']
+    key_status = {}
+    for key_name in possible_keys:
+        test_key = os.environ.get(key_name, '')
+        key_status[key_name] = {
+            'exists': bool(test_key),
+            'length': len(test_key) if test_key else 0,
+            'starts_with_sk': test_key.startswith('sk-') if test_key else False,
+            'is_valid': bool(test_key and test_key.startswith('sk-') and len(test_key) > 20)
+        }
     
     return jsonify({
-        'environment_variables': env_vars,
-        'total_env_vars': len(os.environ)
+        'platform_info': {
+            'platform': platform.platform(),
+            'python_version': platform.python_version(),
+            'working_directory': os.getcwd()
+        },
+        'azure_info': azure_vars,
+        'api_variables': api_related_vars,
+        'general_variables': env_vars,
+        'openai_key_analysis': key_status,
+        'total_env_vars': len(os.environ),
+        'is_azure_app_service': 'WEBSITE_SITE_NAME' in os.environ
     })
 
 @app.route('/chat', methods=['POST'])
@@ -235,17 +286,24 @@ def chat():
         user_api_key = data.get('api_key', '').strip()
         
         # Smart API key handling - check for valid environment variable first
-        env_api_key = os.environ.get('OPENAI_API_KEY', '').strip()
+        possible_keys = ['OPENAI_API_KEY', 'OPENAI_API_KEY_VALUE', 'AZURE_OPENAI_KEY']
+        env_api_key = None
+        
+        for key_name in possible_keys:
+            test_key = os.environ.get(key_name, '').strip()
+            if test_key and test_key.startswith('sk-') and len(test_key) > 20:
+                env_api_key = test_key
+                break
         
         # Debug logging for environment variable
         print(f"Chat request debug:")
-        print(f"  - Environment key exists: {bool(env_api_key)}")
+        print(f"  - Environment key found: {bool(env_api_key)}")
         print(f"  - Environment key length: {len(env_api_key) if env_api_key else 0}")
         print(f"  - User provided key: {bool(user_api_key)}")
         print(f"  - User key length: {len(user_api_key) if user_api_key else 0}")
         
-        # Only use environment key if it's actually valid (starts with sk- and reasonable length)
-        if env_api_key and env_api_key.startswith('sk-') and len(env_api_key) > 20:
+        # Use environment key if available, otherwise user input
+        if env_api_key:
             api_key = env_api_key
             api_source = "Azure environment"
         else:
