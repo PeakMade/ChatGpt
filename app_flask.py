@@ -142,9 +142,9 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
                 "content": msg["content"]
             })
         
-        # Get response from OpenAI using GPT-3.5-turbo
+        # Get response from OpenAI using GPT-4o-mini
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Reliable model that works with all API keys
+            model="gpt-4o-mini",  # Latest efficient model with better performance
             messages=openai_messages,
             max_tokens=1500,  # Increased for more detailed responses
             temperature=0.7
@@ -202,9 +202,9 @@ Please provide helpful, accurate, and up-to-date responses based on your 2025 kn
                 "content": msg["content"]
             })
         
-        # Use modern API call with GPT-3.5-turbo
+        # Use modern API call with GPT-4o-mini
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Reliable model that works with all API keys
+            model="gpt-4o-mini",  # Latest efficient model with better performance
             messages=openai_messages,
             max_tokens=1500,
             temperature=0.7
