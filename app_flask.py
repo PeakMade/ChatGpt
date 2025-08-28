@@ -60,12 +60,21 @@ def get_api_key():
     # Try Azure Key Vault first (production)
     keyvault_key = get_api_key_from_keyvault()
     if keyvault_key and keyvault_key.startswith('sk-') and len(keyvault_key) > 20:
+        print(f"Using Key Vault API key (length: {len(keyvault_key)})")
         return keyvault_key
     
     # Fall back to environment variable (local development)
     env_key = os.environ.get('OPENAI_API_KEY', '').strip()
     if env_key and env_key.startswith('sk-') and len(env_key) > 20:
+        print(f"Using environment API key (length: {len(env_key)})")
         return env_key
+    
+    # Debug info
+    print(f"No API key found:")
+    print(f"  - Key Vault available: {AZURE_AVAILABLE}")
+    print(f"  - Key Vault result: {bool(keyvault_key)}")
+    print(f"  - Environment var exists: {bool(os.environ.get('OPENAI_API_KEY'))}")
+    print(f"  - Environment var value length: {len(os.environ.get('OPENAI_API_KEY', ''))}")
     
     # No valid key found, require user input
     return None
