@@ -518,70 +518,93 @@
             margin-top: 5px;
         }
 
-        /* AI Status Window */
+        /* AI Status Window - Compact bottom bar */
         .ai-status-window {
             position: fixed;
-            top: 140px;
+            bottom: 20px;
             right: 20px;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            padding: 15px;
-            min-width: 200px;
-            z-index: 1000;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
             border: 1px solid #e0e0e0;
             transition: all 0.3s ease;
+            z-index: 1000;
+            max-width: 300px;
         }
 
-        .ai-status-window.collapsed {
-            transform: translateX(calc(100% - 40px));
+        .ai-status-window.collapsed .ai-status-content {
+            display: none;
+        }
+
+        .ai-status-window.collapsed .ai-status-header {
+            border-radius: 8px;
         }
 
         .ai-status-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            padding: 10px 14px;
             cursor: pointer;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border-radius: 8px 8px 0 0;
+            font-size: 12px;
+        }
+
+        .ai-status-window.collapsed .ai-status-header {
+            border-radius: 8px;
+        }
+
+        .ai-status-header:hover {
+            background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
         }
 
         .ai-status-title {
             font-weight: 600;
-            font-size: 14px;
-            color: #333;
-            flex: 1;
+            font-size: 12px;
+            color: white;
+            margin-right: 8px;
         }
 
         .ai-status-toggle {
-            background: none;
-            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
             cursor: pointer;
-            padding: 4px;
+            padding: 2px 6px;
             border-radius: 4px;
-            transition: background 0.3s ease;
-            font-size: 16px;
+            transition: all 0.3s ease;
+            font-size: 10px;
+            font-weight: bold;
+            min-width: 20px;
         }
 
         .ai-status-toggle:hover {
-            background: #f8f9fa;
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
         }
 
         .ai-status-content {
+            padding: 12px 14px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
+            font-size: 11px;
         }
 
         .ai-status-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 12px;
+            font-size: 10px;
+            margin-bottom: 2px;
         }
 
         .ai-status-label {
             color: #666;
             font-weight: 500;
+            font-size: 10px;
         }
 
         .ai-status-value {
@@ -591,14 +614,15 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            font-size: 10px;
         }
 
         .ai-status-badge {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 10px;
+            padding: 1px 4px;
+            border-radius: 8px;
+            font-size: 8px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -606,11 +630,11 @@
 
         .token-progress {
             width: 100%;
-            height: 4px;
+            height: 3px;
             background: #e9ecef;
             border-radius: 2px;
             overflow: hidden;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         .token-progress-bar {
@@ -621,20 +645,147 @@
             width: 0%;
         }
 
-        @media (max-width: 768px) {
+        /* Dedicated File Upload Sidebar Section */
+        .file-upload-sidebar-section {
+            padding: 10px;
+            border-top: 1px solid #e0e0e0;
+            background: #f8f9fa;
+        }
+
+        .file-upload-title {
+            color: #28a745;
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .file-upload-area {
+            background: white;
+            border: 2px dashed #28a745;
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 8px;
+        }
+
+        .file-upload-area:hover {
+            border-color: #20c997;
+            background: #f0f8f0;
+            transform: translateY(-1px);
+        }
+
+        .file-upload-area .file-upload-icon {
+            font-size: 20px;
+            color: #28a745;
+            margin-bottom: 6px;
+        }
+
+        .file-upload-area .file-upload-text {
+            color: #28a745;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .file-upload-area .file-upload-subtext {
+            color: #6c757d;
+            font-size: 11px;
+        }
+
+        .upload-status {
+            font-size: 12px;
+            margin-top: 8px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .upload-status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .upload-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .upload-status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .uploaded-file-display {
+            background: white;
+            border: 1px solid #28a745;
+            border-radius: 4px;
+            padding: 8px;
+            margin-top: 6px;
+        }
+
+        .uploaded-file-name {
+            font-weight: 600;
+            color: #28a745;
+            font-size: 12px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .uploaded-file-name:before {
+            content: "📄";
+            font-size: 16px;
+        }
+
+        .uploaded-file-preview {
+            color: #6c757d;
+            font-size: 11px;
+            max-height: 50px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #28a745;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .clear-file-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .clear-file-btn:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 250px 1fr;
+                gap: 15px;
+            }
+            
             .ai-status-window {
-                top: 120px;
-                right: 10px;
-                min-width: 180px;
-                padding: 12px;
-            }
-
-            .ai-status-title {
-                font-size: 13px;
-            }
-
-            .ai-status-item {
-                font-size: 11px;
+                bottom: 15px;
+                right: 15px;
+                max-width: 250px;
             }
         }
 
@@ -657,6 +808,20 @@
             
             .main-chat {
                 order: 2;
+            }
+            
+            .ai-status-window {
+                bottom: 10px;
+                right: 10px;
+                max-width: 200px;
+            }
+            
+            .ai-status-title {
+                font-size: 11px;
+            }
+            
+            .ai-status-item {
+                font-size: 9px;
             }
 
             .sidebar-header h2 {
@@ -754,39 +919,6 @@
     </style>
 </head>
 <body>
-    <!-- AI Status Window -->
-    <div class="ai-status-window" id="aiStatusWindow">
-        <div class="ai-status-header" onclick="toggleStatusWindow()">
-            <div class="ai-status-title">AI Engine Status</div>
-            <button class="ai-status-toggle" id="statusToggle">▼</button>
-        </div>
-        <div class="ai-status-content" id="statusContent">
-            <div class="ai-status-item">
-                <span class="ai-status-label">Model:</span>
-                <span class="ai-status-value" id="currentModel">GPT-4o-mini</span>
-            </div>
-            <div class="ai-status-item">
-                <span class="ai-status-label">Temperature:</span>
-                <span class="ai-status-value" id="currentTemp">0.7</span>
-            </div>
-            <div class="ai-status-item">
-                <span class="ai-status-label">Max Tokens:</span>
-                <span class="ai-status-value" id="maxTokens">1,500</span>
-            </div>
-            <div class="ai-status-item">
-                <span class="ai-status-label">Last Response:</span>
-                <span class="ai-status-value" id="lastTokens">0</span>
-            </div>
-            <div class="ai-status-item">
-                <span class="ai-status-label">Status:</span>
-                <span class="ai-status-badge" id="aiStatus">Ready</span>
-            </div>
-            <div class="token-progress" title="Token usage progress">
-                <div class="token-progress-bar" id="tokenProgressBar"></div>
-            </div>
-        </div>
-    </div>
-
     <div class="header-container">
         <div class="logo logo-clean">
             <img src="https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcTQp9CsCdZ6lFTwb9RO4FLBRF5gDF1DuoBILJzmoyOiwi486qh3" alt="PEAKMADE Logo">
@@ -818,7 +950,7 @@
                 
                 <div class="settings-section">
                     <button onclick="toggleSettings()" class="settings-toggle" id="settingsToggle">
-                        ⚙️ Settings & API Key
+                        ⚙️ API Settings
                     </button>
                     
                     <div class="api-key-section" id="apiKeySection">
@@ -826,12 +958,22 @@
                         <textarea id="apiKey" class="api-key-input" placeholder="Enter your OpenAI API key here..." rows="3" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;"></textarea>
                         <div id="apiStatus" class="status-indicator status-disconnected" style="margin-top: 5px; font-size: 11px;">Not Connected</div>
                     </div>
-
-                    <div class="file-upload-section" id="fileUploadSection">
-                        <h4 style="margin: 10px 0 5px 0; font-size: 14px;">Upload File</h4>
-                        <input type="file" id="fileInput" class="file-input" accept=".pdf,.txt" style="width: 100%; margin-bottom: 8px;">
-                        <button onclick="uploadFile()" class="btn btn-secondary" style="width: 100%; font-size: 12px; padding: 6px;">Upload</button>
-                        <div id="uploadStatus"></div>
+                </div>
+                
+                <!-- Dedicated File Upload Section -->
+                <div class="file-upload-sidebar-section">
+                    <h3 class="file-upload-title">📎 Upload Documents</h3>
+                    <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
+                        <div class="file-upload-icon">📄</div>
+                        <div class="file-upload-text">Click to select file</div>
+                        <div class="file-upload-subtext">PDF, TXT, DOCX supported</div>
+                        <input type="file" id="fileInput" class="hidden-file-input" accept=".pdf,.txt,.docx,.md,.csv" onchange="handleSidebarFileSelect(event)">
+                    </div>
+                    <div id="uploadStatus" class="upload-status"></div>
+                    <div id="uploadedFileDisplay" class="uploaded-file-display" style="display: none;">
+                        <div class="uploaded-file-name" id="uploadedFileName"></div>
+                        <div class="uploaded-file-preview" id="uploadedFilePreview"></div>
+                        <button onclick="clearUploadedFile()" class="clear-file-btn">✕ Remove</button>
                     </div>
                 </div>
             </div>
@@ -868,6 +1010,39 @@
         </div>
     </div>
 
+    <!-- AI Status Window - Compact floating bar -->
+    <div class="ai-status-window collapsed" id="aiStatusWindow">
+        <div class="ai-status-header" onclick="toggleStatusWindow()">
+            <div class="ai-status-title">Engine Status</div>
+            <button class="ai-status-toggle" id="statusToggle">▲</button>
+        </div>
+        <div class="ai-status-content" id="statusContent">
+            <div class="ai-status-item">
+                <span class="ai-status-label">Model:</span>
+                <span class="ai-status-value" id="currentModel">GPT-4o-mini</span>
+            </div>
+            <div class="ai-status-item">
+                <span class="ai-status-label">Temperature:</span>
+                <span class="ai-status-value" id="currentTemp">0.7</span>
+            </div>
+            <div class="ai-status-item">
+                <span class="ai-status-label">Max Tokens:</span>
+                <span class="ai-status-value" id="maxTokens">1,500</span>
+            </div>
+            <div class="ai-status-item">
+                <span class="ai-status-label">Last Response:</span>
+                <span class="ai-status-value" id="lastTokens">0</span>
+            </div>
+            <div class="ai-status-item">
+                <span class="ai-status-label">Status:</span>
+                <span class="ai-status-badge" id="aiStatus">Ready</span>
+            </div>
+            <div class="token-progress" title="Token usage progress">
+                <div class="token-progress-bar" id="tokenProgressBar"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let uploadedContent = '';
         let currentConversationId = null;
@@ -884,7 +1059,7 @@
                 statusToggle.textContent = '▼';
             } else {
                 statusWindow.classList.add('collapsed');
-                statusToggle.textContent = '◀';
+                statusToggle.textContent = '▲';
             }
         }
 
@@ -1071,16 +1246,13 @@
 
         function toggleSettings() {
             const apiSection = document.getElementById('apiKeySection');
-            const fileSection = document.getElementById('fileUploadSection');
             const toggle = document.getElementById('settingsToggle');
             
             if (apiSection.classList.contains('show')) {
                 apiSection.classList.remove('show');
-                fileSection.classList.remove('show');
-                toggle.textContent = '⚙️ Settings & API Key';
+                toggle.textContent = '⚙️ API Settings';
             } else {
                 apiSection.classList.add('show');
-                fileSection.classList.add('show');
                 toggle.textContent = '⚙️ Hide Settings';
             }
         }
@@ -1092,7 +1264,11 @@
             }
             renderConversationsList();
             
-            // Initialize AI status window
+            // Initialize AI status window as collapsed
+            const statusWindow = document.getElementById('aiStatusWindow');
+            const statusToggle = document.getElementById('statusToggle');
+            statusWindow.classList.add('collapsed');
+            statusToggle.textContent = '▲';
             updateAIStatus('Ready');
         });
         
@@ -1323,6 +1499,76 @@
             const statusEl = document.getElementById('uploadStatus');
             statusEl.textContent = message;
             statusEl.className = type;
+        }
+
+        function handleSidebarFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            // Show file display
+            document.getElementById('uploadedFileDisplay').style.display = 'block';
+            document.getElementById('uploadedFileName').textContent = file.name;
+            
+            // Show file preview if it's a text file
+            if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = e.target.result.substring(0, 200) + (e.target.result.length > 200 ? '...' : '');
+                    document.getElementById('uploadedFilePreview').textContent = preview;
+                };
+                reader.readAsText(file);
+            } else {
+                document.getElementById('uploadedFilePreview').textContent = `File type: ${file.type || 'unknown'}`;
+            }
+
+            // Upload the file
+            uploadSidebarFile(file);
+        }
+
+        async function uploadSidebarFile(file) {
+            const statusEl = document.querySelector('.upload-status');
+            statusEl.textContent = 'Uploading...';
+            statusEl.className = 'upload-status loading';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    uploadedContent = data.full_content;
+                    statusEl.textContent = `"${data.filename}" uploaded successfully!`;
+                    statusEl.className = 'upload-status success';
+                } else {
+                    statusEl.textContent = data.error || 'Upload failed';
+                    statusEl.className = 'upload-status error';
+                }
+            } catch (error) {
+                statusEl.textContent = 'Upload error: ' + error.message;
+                statusEl.className = 'upload-status error';
+            }
+        }
+
+        function clearUploadedFile() {
+            // Clear the file input
+            document.getElementById('sidebarFileInput').value = '';
+            
+            // Hide the file display
+            document.getElementById('uploadedFileDisplay').style.display = 'none';
+            
+            // Clear the uploaded content
+            uploadedContent = '';
+            
+            // Reset status
+            const statusEl = document.querySelector('.upload-status');
+            statusEl.textContent = '';
+            statusEl.className = 'upload-status';
         }
 
         async function clearChat() {

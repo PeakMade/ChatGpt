@@ -121,6 +121,15 @@ Key information about your knowledge:
 - You can discuss recent developments, technologies, and current events
 - When discussing dates or timelines, remember it's currently 2025
 
+IMPORTANT FORMATTING REQUIREMENTS:
+- Always structure your responses with clear paragraphs separated by blank lines
+- When providing multiple steps or points, use bullet points or numbered lists
+- Break up long explanations into digestible paragraphs
+- Use proper formatting with line breaks between different topics or sections
+- For processes or instructions, use numbered steps (1., 2., 3., etc.)
+- For lists of features or benefits, use bullet points (• or -)
+- Ensure readability with proper spacing and organization
+
 Please provide helpful, accurate, and up-to-date responses based on your 2025 knowledge base."""
 
         openai_messages.append({
@@ -180,6 +189,15 @@ Key information about your knowledge:
 - You have access to information and events through 2025
 - You can discuss recent developments, technologies, and current events
 - When discussing dates or timelines, remember it's currently 2025
+
+IMPORTANT FORMATTING REQUIREMENTS:
+- Always structure your responses with clear paragraphs separated by blank lines
+- When providing multiple steps or points, use bullet points or numbered lists
+- Break up long explanations into digestible paragraphs
+- Use proper formatting with line breaks between different topics or sections
+- For processes or instructions, use numbered steps (1., 2., 3., etc.)
+- For lists of features or benefits, use bullet points (• or -)
+- Ensure readability with proper spacing and organization
 
 Please provide helpful, accurate, and up-to-date responses based on your 2025 knowledge base."""
 
