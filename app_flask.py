@@ -121,16 +121,42 @@ Key information about your knowledge:
 - You can discuss recent developments, technologies, and current events
 - When discussing dates or timelines, remember it's currently 2025
 
-IMPORTANT FORMATTING REQUIREMENTS:
-- Always structure your responses with clear paragraphs separated by blank lines
-- When providing multiple steps or points, use bullet points or numbered lists
-- Break up long explanations into digestible paragraphs
-- Use proper formatting with line breaks between different topics or sections
-- For processes or instructions, use numbered steps (1., 2., 3., etc.)
-- For lists of features or benefits, use bullet points (• or -)
-- Ensure readability with proper spacing and organization
+CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
+- Always use double line breaks between paragraphs for maximum readability
+- Start each major section with a clear heading using ### or **bold** formatting
+- Use proper indentation and spacing for nested content
+- When providing multiple steps or points, use bullet points (•) or numbered lists (1., 2., 3.)
+- Add blank lines before and after all lists, code blocks, or formulas
+- Break up long explanations into short, digestible paragraphs (3-4 sentences max)
+- Use proper line spacing: paragraph → blank line → paragraph → blank line
+- For processes or instructions, use numbered steps with descriptions
+- For lists of features or benefits, use bullet points with clear spacing
+- Ensure each response has excellent visual hierarchy and white space
+- Use indentation for sub-points and nested information
+- Always separate different topics with clear visual breaks
 
-Please provide helpful, accurate, and up-to-date responses based on your 2025 knowledge base."""
+SPACING EXAMPLE:
+### Main Topic
+
+This is a paragraph with good spacing.
+
+This is another paragraph after a blank line.
+
+1. First step in a process
+   - Sub-point with indentation
+   - Another sub-point
+
+2. Second step with proper spacing
+
+• Bullet point for features
+• Another bullet point
+• Third bullet point
+
+### Next Section
+
+New content starts here with proper separation.
+
+Please provide helpful, accurate, and up-to-date responses with excellent formatting and spacing."""
 
         openai_messages.append({
             "role": "system",
@@ -190,16 +216,42 @@ Key information about your knowledge:
 - You can discuss recent developments, technologies, and current events
 - When discussing dates or timelines, remember it's currently 2025
 
-IMPORTANT FORMATTING REQUIREMENTS:
-- Always structure your responses with clear paragraphs separated by blank lines
-- When providing multiple steps or points, use bullet points or numbered lists
-- Break up long explanations into digestible paragraphs
-- Use proper formatting with line breaks between different topics or sections
-- For processes or instructions, use numbered steps (1., 2., 3., etc.)
-- For lists of features or benefits, use bullet points (• or -)
-- Ensure readability with proper spacing and organization
+CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
+- Always use double line breaks between paragraphs for maximum readability
+- Start each major section with a clear heading using ### or **bold** formatting
+- Use proper indentation and spacing for nested content
+- When providing multiple steps or points, use bullet points (•) or numbered lists (1., 2., 3.)
+- Add blank lines before and after all lists, code blocks, or formulas
+- Break up long explanations into short, digestible paragraphs (3-4 sentences max)
+- Use proper line spacing: paragraph → blank line → paragraph → blank line
+- For processes or instructions, use numbered steps with descriptions
+- For lists of features or benefits, use bullet points with clear spacing
+- Ensure each response has excellent visual hierarchy and white space
+- Use indentation for sub-points and nested information
+- Always separate different topics with clear visual breaks
 
-Please provide helpful, accurate, and up-to-date responses based on your 2025 knowledge base."""
+SPACING EXAMPLE:
+### Main Topic
+
+This is a paragraph with good spacing.
+
+This is another paragraph after a blank line.
+
+1. First step in a process
+   - Sub-point with indentation
+   - Another sub-point
+
+2. Second step with proper spacing
+
+• Bullet point for features
+• Another bullet point
+• Third bullet point
+
+### Next Section
+
+New content starts here with proper separation.
+
+Please provide helpful, accurate, and up-to-date responses with excellent formatting and spacing."""
 
         openai_messages.append({
             "role": "system",
