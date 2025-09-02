@@ -283,6 +283,8 @@
             border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             word-wrap: break-word;
+            white-space: pre-wrap;
+            line-height: 1.6;
         }
 
         .user-message {
@@ -504,6 +506,33 @@
 
         .assistant-message.typing {
             position: relative;
+        }
+
+        /* Enhanced animation for content loading */
+        .message span {
+            transition: all 0.3s ease-in-out;
+        }
+
+        .content-loading {
+            opacity: 0.7;
+            transform: translateY(2px);
+        }
+
+        .content-loaded {
+            opacity: 1;
+            transform: translateY(0);
+            animation: contentAppear 0.5s ease-out;
+        }
+
+        @keyframes contentAppear {
+            0% {
+                opacity: 0.7;
+                transform: translateY(5px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .error {
@@ -891,6 +920,40 @@
             fill: none;
         }
 
+        .attachment-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.2);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .attachment-btn:hover {
+            background: rgba(40, 167, 69, 0.15);
+            border-color: rgba(40, 167, 69, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+        }
+
+        .attachment-btn:active {
+            transform: translateY(0);
+        }
+
+        .attachment-icon {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
         .copy-success {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
             color: white !important;
@@ -990,6 +1053,11 @@
                 <div class="input-group">
                     <input type="text" id="messageInput" class="chat-input" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
                     <div class="input-actions">
+                        <button onclick="triggerFileUpload()" class="attachment-btn" title="Add attachment">
+                            <svg class="attachment-icon" viewBox="0 0 24 24" width="16" height="16">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49"></path>
+                            </svg>
+                        </button>
                         <button onclick="sendMessage()" class="btn">Send</button>
                         <button onclick="copyFullChat()" class="copy-chat-btn" id="copyChatBtn" title="Copy entire chat">
                             <svg class="copy-icon" viewBox="0 0 24 24">
@@ -1410,25 +1478,69 @@
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            // Typewriter effect
-            let index = 0;
-            const typeSpeed = 30; // milliseconds between characters
+            // Enhanced typewriter effect for long responses
+            const isLongResponse = content.length > 300; // Consider response long if over 300 characters
             
-            function typeCharacter() {
-                if (index < content.length) {
-                    contentSpan.textContent += content.charAt(index);
-                    index++;
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    setTimeout(typeCharacter, typeSpeed);
-                } else {
-                    // Remove typewriter cursor when done
-                    contentSpan.classList.remove('typewriter');
-                    messageDiv.classList.remove('typing');
+            if (isLongResponse) {
+                // For long responses: type first paragraph, then show full content
+                const firstParagraph = content.split('\n\n')[0] || content.substring(0, 150);
+                let index = 0;
+                const typeSpeed = 25; // milliseconds between characters
+                
+                function typeFirstParagraph() {
+                    if (index < firstParagraph.length) {
+                        contentSpan.textContent += firstParagraph.charAt(index);
+                        index++;
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        setTimeout(typeFirstParagraph, typeSpeed);
+                    } else {
+                        // Add "..." to indicate more content coming
+                        contentSpan.textContent += '...';
+                        
+                        // After typing first paragraph, wait and then show full content
+                        setTimeout(() => {
+                            contentSpan.classList.add('content-loading');
+                            
+                            setTimeout(() => {
+                                contentSpan.textContent = content;
+                                contentSpan.classList.remove('typewriter', 'content-loading');
+                                contentSpan.classList.add('content-loaded');
+                                messageDiv.classList.remove('typing');
+                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                                
+                                // Remove the animation class after animation completes
+                                setTimeout(() => {
+                                    contentSpan.classList.remove('content-loaded');
+                                }, 500);
+                            }, 200);
+                        }, 1500); // Wait 1.5 seconds before showing full content
+                    }
                 }
+                
+                // Start typing after a short delay
+                setTimeout(typeFirstParagraph, 300);
+                
+            } else {
+                // For shorter responses: use regular typewriter effect
+                let index = 0;
+                const typeSpeed = 30; // milliseconds between characters
+                
+                function typeCharacter() {
+                    if (index < content.length) {
+                        contentSpan.textContent += content.charAt(index);
+                        index++;
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        setTimeout(typeCharacter, typeSpeed);
+                    } else {
+                        // Remove typewriter cursor when done
+                        contentSpan.classList.remove('typewriter');
+                        messageDiv.classList.remove('typing');
+                    }
+                }
+                
+                // Start typing after a short delay
+                setTimeout(typeCharacter, 300);
             }
-            
-            // Start typing after a short delay
-            setTimeout(typeCharacter, 300);
         }
 
         // Check API key status on page load
@@ -1644,6 +1756,12 @@
                 `;
                 btn.classList.add('copy-success');
             });
+        }
+
+        // Function to trigger file upload when attachment button is clicked
+        function triggerFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            fileInput.click();
         }
 
         // Load existing messages on page load
