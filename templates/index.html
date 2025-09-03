@@ -54,23 +54,28 @@
             flex-direction: column;
         }
 
-        .sidebar-header {
+        .new-chat-section {
             padding: 20px;
             border-bottom: 1px solid #e0e0e0;
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
         }
 
-        .sidebar-header h2 {
+        .chat-history-header {
+            padding: 15px 20px 10px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #f8f9fa;
+        }
+
+        .chat-history-header h2 {
             margin: 0;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
+            color: #333;
         }
 
         .new-chat-btn {
             width: 100%;
-            margin-top: 12px;
-            padding: 10px;
+            padding: 12px;
             background: rgba(255, 255, 255, 0.2);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.3);
@@ -179,22 +184,164 @@
             padding: 15px;
             border-top: 1px solid #e0e0e0;
             background: #f8f9fa;
+            display: flex;
+            justify-content: flex-end;
+            flex-direction: column;
+            align-items: flex-end;
         }
 
-        .settings-toggle {
+        .admin-login {
             width: 100%;
-            padding: 8px;
-            background: none;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            color: #666;
-            transition: all 0.3s ease;
+            margin-bottom: 8px;
         }
 
-        .settings-toggle:hover {
-            background: #e9ecef;
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 6px 8px;
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            margin-bottom: 6px;
+        }
+
+        .admin-header:hover {
+            background: rgba(40, 167, 69, 0.15);
+        }
+
+        .admin-title {
+            font-size: 12px;
+            color: #333;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .admin-toggle {
+            font-size: 10px;
+            color: #28a745;
+            transition: transform 0.3s ease;
+            font-weight: bold;
+        }
+
+        .admin-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+        }
+
+        .admin-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        .admin-content.expanded {
+            max-height: 200px;
+            opacity: 1;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .login-inputs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .login-input {
+            flex: 1;
+            padding: 4px 6px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 10px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            min-width: 0;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: #28a745;
+            box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.1);
+        }
+
+        .login-submit-btn {
+            padding: 5px 8px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .login-submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .login-submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-error {
+            color: #dc3545;
+            font-size: 9px;
+            margin-top: 3px;
+            text-align: center;
+            padding: 3px;
+            background: rgba(220, 53, 69, 0.1);
+            border-radius: 3px;
+        }
+
+        .settings-gear-btn {
+            width: 32px;
+            height: 32px;
+            padding: 6px;
+            background: rgba(40, 167, 69, 0.1);
+            border: 1px solid rgba(40, 167, 69, 0.2);
+            border-radius: 50%;
+            cursor: pointer;
+            color: #28a745;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-gear-btn:hover {
+            background: rgba(40, 167, 69, 0.15);
+            border-color: rgba(40, 167, 69, 0.3);
+            transform: rotate(45deg) scale(1.1);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+        }
+
+        .settings-gear-btn:active {
+            transform: rotate(45deg) scale(1);
+        }
+
+        @keyframes fadeInGear {
+            0% {
+                opacity: 0;
+                transform: rotate(-180deg) scale(0.5);
+            }
+            50% {
+                opacity: 0.7;
+                transform: rotate(0deg) scale(1.2);
+            }
+            100% {
+                opacity: 1;
+                transform: rotate(0deg) scale(1);
+            }
         }
 
         .api-key-section, .file-upload-section {
@@ -547,6 +694,49 @@
             margin-top: 5px;
         }
 
+        /* Engine Status in Admin Settings */
+        .engine-status-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 11px;
+        }
+
+        .engine-status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            margin-bottom: 2px;
+        }
+
+        .engine-status-label {
+            color: #666;
+            font-weight: 500;
+            font-size: 11px;
+        }
+
+        .engine-status-value {
+            color: #333;
+            font-weight: 600;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 11px;
+        }
+
+        .engine-status-badge {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         /* AI Status Window - Compact bottom bar */
         .ai-status-window {
             position: fixed;
@@ -674,137 +864,6 @@
             width: 0%;
         }
 
-        /* Dedicated File Upload Sidebar Section */
-        .file-upload-sidebar-section {
-            padding: 10px;
-            border-top: 1px solid #e0e0e0;
-            background: #f8f9fa;
-        }
-
-        .file-upload-title {
-            color: #28a745;
-            margin: 0 0 8px 0;
-            font-size: 14px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .file-upload-area {
-            background: white;
-            border: 2px dashed #28a745;
-            border-radius: 6px;
-            padding: 12px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 8px;
-        }
-
-        .file-upload-area:hover {
-            border-color: #20c997;
-            background: #f0f8f0;
-            transform: translateY(-1px);
-        }
-
-        .file-upload-area .file-upload-icon {
-            font-size: 20px;
-            color: #28a745;
-            margin-bottom: 6px;
-        }
-
-        .file-upload-area .file-upload-text {
-            color: #28a745;
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 3px;
-        }
-
-        .file-upload-area .file-upload-subtext {
-            color: #6c757d;
-            font-size: 11px;
-        }
-
-        .upload-status {
-            font-size: 12px;
-            margin-top: 8px;
-            padding: 6px 8px;
-            border-radius: 4px;
-            text-align: center;
-        }
-
-        .upload-status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .upload-status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .upload-status.loading {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-        }
-
-        .uploaded-file-display {
-            background: white;
-            border: 1px solid #28a745;
-            border-radius: 4px;
-            padding: 8px;
-            margin-top: 6px;
-        }
-
-        .uploaded-file-name {
-            font-weight: 600;
-            color: #28a745;
-            font-size: 12px;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .uploaded-file-name:before {
-            content: "📄";
-            font-size: 16px;
-        }
-
-        .uploaded-file-preview {
-            color: #6c757d;
-            font-size: 11px;
-            max-height: 50px;
-            overflow-y: auto;
-            background: #f8f9fa;
-            padding: 8px;
-            border-radius: 4px;
-            border-left: 3px solid #28a745;
-            margin-bottom: 8px;
-            line-height: 1.3;
-        }
-
-        .clear-file-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-
-        .clear-file-btn:hover {
-            background: #c82333;
-            transform: translateY(-1px);
-        }
-
         @media (max-width: 1024px) {
             .container {
                 grid-template-columns: 250px 1fr;
@@ -853,8 +912,8 @@
                 font-size: 9px;
             }
 
-            .sidebar-header h2 {
-                font-size: 16px;
+            .chat-history-header h2 {
+                font-size: 14px;
             }
 
             .conversation-item {
@@ -995,14 +1054,17 @@
     <div class="content-wrapper">
         <div class="container">
             <div class="sidebar">
-                <div class="sidebar-header">
-                    <h2>Chat History</h2>
+                <div class="new-chat-section">
                     <button onclick="startNewChat()" class="new-chat-btn">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 5v14m-7-7h14"></path>
                         </svg>
                         New Chat
                     </button>
+                </div>
+                
+                <div class="chat-history-header">
+                    <h2>Chat History</h2>
                 </div>
                 
                 <div class="conversations-list" id="conversationsList">
@@ -1012,31 +1074,70 @@
                 </div>
                 
                 <div class="settings-section">
-                    <button onclick="toggleSettings()" class="settings-toggle" id="settingsToggle">
-                        ⚙️ API Settings
+                    <!-- Login Form (shown by default) -->
+                    <div class="admin-login" id="adminLogin">
+                        <div class="admin-header" onclick="toggleAdminAccess()">
+                            <h4 class="admin-title">Admin Access</h4>
+                            <span class="admin-toggle" id="adminToggle">▼</span>
+                        </div>
+                        <div class="admin-content expanded" id="adminContent">
+                            <div class="login-form">
+                                <div class="login-inputs">
+                                    <input type="text" id="adminUsername" class="login-input" placeholder="Username">
+                                    <input type="password" id="adminPassword" class="login-input" placeholder="Password">
+                                </div>
+                                <button onclick="submitAdminLogin()" class="login-submit-btn">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-5-4l5-5-5-5m5 5H3"></path>
+                                    </svg>
+                                    Login
+                                </button>
+                                <div id="loginError" class="login-error" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gear Icon (hidden until login) -->
+                    <button onclick="toggleSettings()" class="settings-gear-btn" id="settingsToggle" title="Admin Settings" style="display: none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
                     </button>
                     
                     <div class="api-key-section" id="apiKeySection">
                         <h4 style="margin: 10px 0 5px 0; font-size: 14px;">OpenAI API Key</h4>
                         <textarea id="apiKey" class="api-key-input" placeholder="Enter your OpenAI API key here..." rows="3" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;"></textarea>
                         <div id="apiStatus" class="status-indicator status-disconnected" style="margin-top: 5px; font-size: 11px;">Not Connected</div>
-                    </div>
-                </div>
-                
-                <!-- Dedicated File Upload Section -->
-                <div class="file-upload-sidebar-section">
-                    <h3 class="file-upload-title">📎 Upload Documents</h3>
-                    <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
-                        <div class="file-upload-icon">📄</div>
-                        <div class="file-upload-text">Click to select file</div>
-                        <div class="file-upload-subtext">PDF, TXT, DOCX supported</div>
-                        <input type="file" id="fileInput" class="hidden-file-input" accept=".pdf,.txt,.docx,.md,.csv" onchange="handleSidebarFileSelect(event)">
-                    </div>
-                    <div id="uploadStatus" class="upload-status"></div>
-                    <div id="uploadedFileDisplay" class="uploaded-file-display" style="display: none;">
-                        <div class="uploaded-file-name" id="uploadedFileName"></div>
-                        <div class="uploaded-file-preview" id="uploadedFilePreview"></div>
-                        <button onclick="clearUploadedFile()" class="clear-file-btn">✕ Remove</button>
+                        
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 14px;">Engine Status</h4>
+                            <div class="engine-status-content" id="engineStatusContent">
+                                <div class="engine-status-item">
+                                    <span class="engine-status-label">Model:</span>
+                                    <span class="engine-status-value" id="currentModel">GPT-4o-mini</span>
+                                </div>
+                                <div class="engine-status-item">
+                                    <span class="engine-status-label">Temperature:</span>
+                                    <span class="engine-status-value" id="currentTemp">0.7</span>
+                                </div>
+                                <div class="engine-status-item">
+                                    <span class="engine-status-label">Max Tokens:</span>
+                                    <span class="engine-status-value" id="maxTokens">1,500</span>
+                                </div>
+                                <div class="engine-status-item">
+                                    <span class="engine-status-label">Last Response:</span>
+                                    <span class="engine-status-value" id="lastTokens">0</span>
+                                </div>
+                                <div class="engine-status-item">
+                                    <span class="engine-status-label">Status:</span>
+                                    <span class="engine-status-badge" id="aiStatus">Ready</span>
+                                </div>
+                                <div class="token-progress" title="Token usage progress" style="margin-top: 8px;">
+                                    <div class="token-progress-bar" id="tokenProgressBar"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1045,7 +1146,7 @@
 
             <div id="chatMessages" class="chat-messages">
                 <div class="assistant-message">
-                    <strong>AI Assistant:</strong> Hello! I'm AI BOOST, your advanced AI assistant with knowledge updated through 2025. I can help you with current information, recent developments, and analyze documents. Please enter your OpenAI API key in the sidebar to get started. You can also upload PDF or text files for me to analyze.
+                    <strong>AI Assistant:</strong> Hello! I'm AI BOOST, your advanced AI assistant. Ask me something!
                 </div>
             </div>
 
@@ -1078,59 +1179,12 @@
         </div>
     </div>
 
-    <!-- AI Status Window - Compact floating bar -->
-    <div class="ai-status-window collapsed" id="aiStatusWindow">
-        <div class="ai-status-header" onclick="toggleStatusWindow()">
-            <div class="ai-status-title">Engine Status</div>
-            <button class="ai-status-toggle" id="statusToggle">▲</button>
-        </div>
-        <div class="ai-status-content" id="statusContent">
-            <div class="ai-status-item">
-                <span class="ai-status-label">Model:</span>
-                <span class="ai-status-value" id="currentModel">GPT-4o-mini</span>
-            </div>
-            <div class="ai-status-item">
-                <span class="ai-status-label">Temperature:</span>
-                <span class="ai-status-value" id="currentTemp">0.7</span>
-            </div>
-            <div class="ai-status-item">
-                <span class="ai-status-label">Max Tokens:</span>
-                <span class="ai-status-value" id="maxTokens">1,500</span>
-            </div>
-            <div class="ai-status-item">
-                <span class="ai-status-label">Last Response:</span>
-                <span class="ai-status-value" id="lastTokens">0</span>
-            </div>
-            <div class="ai-status-item">
-                <span class="ai-status-label">Status:</span>
-                <span class="ai-status-badge" id="aiStatus">Ready</span>
-            </div>
-            <div class="token-progress" title="Token usage progress">
-                <div class="token-progress-bar" id="tokenProgressBar"></div>
-            </div>
-        </div>
-    </div>
-
     <script>
         let uploadedContent = '';
         let currentConversationId = null;
         let conversations = JSON.parse(localStorage.getItem('chatConversations') || '[]');
         
-        // AI Status Window Management
-        function toggleStatusWindow() {
-            const statusWindow = document.getElementById('aiStatusWindow');
-            const statusContent = document.getElementById('statusContent');
-            const statusToggle = document.getElementById('statusToggle');
-            
-            if (statusWindow.classList.contains('collapsed')) {
-                statusWindow.classList.remove('collapsed');
-                statusToggle.textContent = '▼';
-            } else {
-                statusWindow.classList.add('collapsed');
-                statusToggle.textContent = '▲';
-            }
-        }
-
+        // Engine Status Management
         function updateAIStatus(status, tokensUsed = null) {
             const statusBadge = document.getElementById('aiStatus');
             const lastTokens = document.getElementById('lastTokens');
@@ -1138,7 +1192,7 @@
             
             // Update status badge
             statusBadge.textContent = status;
-            statusBadge.className = 'ai-status-badge';
+            statusBadge.className = 'engine-status-badge';
             
             // Color coding for different statuses
             if (status === 'Thinking...') {
@@ -1265,7 +1319,7 @@
             const chatMessages = document.getElementById('chatMessages');
             chatMessages.innerHTML = `
                 <div class="assistant-message">
-                    <strong>AI Assistant:</strong> Hello! I'm AI BOOST, your advanced AI assistant with knowledge updated through 2025. I can help you with current information, recent developments, and analyze documents. How can I assist you today?
+                    <strong>AI Assistant:</strong> Hello! I'm AI BOOST, your advanced AI assistant. Ask me something!
                 </div>
             `;
             renderConversationsList();
@@ -1312,16 +1366,80 @@
             `).join('');
         }
 
+        function toggleAdminAccess() {
+            const adminContent = document.getElementById('adminContent');
+            const adminToggle = document.getElementById('adminToggle');
+            
+            if (adminContent.classList.contains('expanded')) {
+                adminContent.classList.remove('expanded');
+                adminContent.classList.add('collapsed');
+                adminToggle.textContent = '▶';
+                adminToggle.style.transform = 'rotate(0deg)';
+            } else {
+                adminContent.classList.remove('collapsed');
+                adminContent.classList.add('expanded');
+                adminToggle.textContent = '▼';
+                adminToggle.style.transform = 'rotate(0deg)';
+            }
+        }
+
         function toggleSettings() {
             const apiSection = document.getElementById('apiKeySection');
             const toggle = document.getElementById('settingsToggle');
             
             if (apiSection.classList.contains('show')) {
                 apiSection.classList.remove('show');
-                toggle.textContent = '⚙️ API Settings';
+                toggle.style.transform = 'rotate(0deg)';
             } else {
                 apiSection.classList.add('show');
-                toggle.textContent = '⚙️ Hide Settings';
+                toggle.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        function submitAdminLogin() {
+            const username = document.getElementById('adminUsername').value.trim();
+            const password = document.getElementById('adminPassword').value.trim();
+            const errorDiv = document.getElementById('loginError');
+            const loginDiv = document.getElementById('adminLogin');
+            const gearBtn = document.getElementById('settingsToggle');
+            
+            // Clear any previous errors
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+            
+            // Validate inputs
+            if (!username || !password) {
+                showLoginError('Please enter both username and password');
+                return;
+            }
+            
+            // Simple authentication (you can modify these credentials)
+            if (username === 'admin' && password === 'peakmade2025') {
+                // Successful login
+                loginDiv.style.display = 'none';
+                gearBtn.style.display = 'flex';
+                
+                // Store login state
+                sessionStorage.setItem('adminLoggedIn', 'true');
+                
+                // Show success animation
+                gearBtn.style.animation = 'fadeInGear 0.5s ease-out';
+                
+            } else {
+                showLoginError('Invalid username or password');
+            }
+        }
+
+        function showLoginError(message) {
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Add keypress handler for login form
+        function handleLoginKeyPress(event) {
+            if (event.key === 'Enter') {
+                submitAdminLogin();
             }
         }
 
@@ -1332,12 +1450,25 @@
             }
             renderConversationsList();
             
-            // Initialize AI status window as collapsed
-            const statusWindow = document.getElementById('aiStatusWindow');
-            const statusToggle = document.getElementById('statusToggle');
-            statusWindow.classList.add('collapsed');
-            statusToggle.textContent = '▲';
+            // Initialize engine status
             updateAIStatus('Ready');
+            
+            // Check if admin is already logged in
+            const isLoggedIn = sessionStorage.getItem('adminLoggedIn');
+            if (isLoggedIn === 'true') {
+                const loginDiv = document.getElementById('adminLogin');
+                const gearBtn = document.getElementById('settingsToggle');
+                
+                loginDiv.style.display = 'none';
+                gearBtn.style.display = 'flex';
+            }
+            
+            // Add event listeners for Enter key on login inputs
+            const usernameInput = document.getElementById('adminUsername');
+            const passwordInput = document.getElementById('adminPassword');
+            
+            if (usernameInput) usernameInput.addEventListener('keypress', handleLoginKeyPress);
+            if (passwordInput) passwordInput.addEventListener('keypress', handleLoginKeyPress);
         });
         
         function handleKeyPress(event) {
@@ -1760,8 +1891,52 @@
 
         // Function to trigger file upload when attachment button is clicked
         function triggerFileUpload() {
-            const fileInput = document.getElementById('fileInput');
+            // Create a hidden file input if it doesn't exist
+            let fileInput = document.getElementById('attachmentFileInput');
+            if (!fileInput) {
+                fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.id = 'attachmentFileInput';
+                fileInput.style.display = 'none';
+                fileInput.accept = '.pdf,.txt,.docx,.md,.csv';
+                fileInput.addEventListener('change', handleAttachmentFileSelect);
+                document.body.appendChild(fileInput);
+            }
             fileInput.click();
+        }
+
+        function handleAttachmentFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Show upload feedback in the chat
+            const fileName = file.name;
+            addMessageToChat('user', `📎 Uploading file: ${fileName}...`);
+
+            uploadAttachmentFile(file);
+        }
+
+        async function uploadAttachmentFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    uploadedContent = data.full_content;
+                    addMessageToChat('assistant', `✅ File "${data.filename}" uploaded successfully! You can now ask me questions about this file.`);
+                } else {
+                    addMessageToChat('assistant', `❌ Upload failed: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                addMessageToChat('assistant', `❌ Upload error: ${error.message}`);
+            }
         }
 
         // Load existing messages on page load
