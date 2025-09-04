@@ -12,6 +12,7 @@ from typing import List, Dict, Any
 import PyPDF2
 import io
 import json
+from database import db_manager
 
 # Azure Key Vault imports
 try:
@@ -334,6 +335,8 @@ def chat():
         data = request.get_json()
         user_message = data.get('message', '').strip()
         user_api_key = data.get('api_key', '').strip()
+        conversation_id = data.get('conversation_id', '').strip()
+        message_id = data.get('message_id', '').strip()
         
         # Smart API key handling - check Key Vault and environment first
         secure_api_key = get_api_key()
@@ -350,6 +353,22 @@ def chat():
         if not api_key:
             return jsonify({'error': 'Please enter your OpenAI API key'}), 400
         
+        # Ensure we have a conversation ID
+        if not conversation_id:
+            conversation_id = f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+            
+            # Create conversation in database
+            user_id = session.get('user_id', 'default_user')
+            db_manager.create_conversation(
+                conversation_id=conversation_id,
+                title=user_message[:50] + '...' if len(user_message) > 50 else user_message,
+                user_id=user_id
+            )
+        
+        # Generate message ID if not provided
+        if not message_id:
+            message_id = f"msg_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        
         # Update session API key
         session['api_key'] = api_key
         
@@ -361,8 +380,24 @@ def chat():
         }
         session['messages'].append(user_msg)
         
+        # Save user message to database
+        db_manager.save_message(
+            conversation_id=conversation_id,
+            message_id=message_id,
+            role="user",
+            content=user_message,
+            tokens_used=0,  # User messages don't use tokens
+            metadata={"frontend_timestamp": datetime.now().isoformat()}
+        )
+        
         # Get AI response - pass API key directly
         ai_response = get_chat_response(api_key, session['messages'])
+        
+        # Generate AI message ID
+        ai_message_id = f"msg_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        
+        # Estimate tokens used
+        estimated_tokens = len(ai_response.split()) * 1.3  # Rough estimation
         
         # Add AI response to session
         ai_msg = {
@@ -372,13 +407,27 @@ def chat():
         }
         session['messages'].append(ai_msg)
         
+        # Save AI message to database
+        db_manager.save_message(
+            conversation_id=conversation_id,
+            message_id=ai_message_id,
+            role="assistant",
+            content=ai_response,
+            tokens_used=int(estimated_tokens),
+            metadata={"frontend_timestamp": datetime.now().isoformat()}
+        )
+        
         # Save session
         session.modified = True
         
         return jsonify({
             'user_message': user_message,
             'ai_response': ai_response,
-            'timestamp': datetime.now().isoformat()
+            'conversation_id': conversation_id,
+            'user_message_id': message_id,
+            'ai_message_id': ai_message_id,
+            'timestamp': datetime.now().isoformat(),
+            'estimated_tokens': int(estimated_tokens)
         })
         
     except Exception as e:
@@ -439,6 +488,247 @@ def get_messages():
             'messages': [],
             'api_key': ''
         })
+
+# ============================================================================
+# THREAD MANAGEMENT API ENDPOINTS
+# ============================================================================
+
+@app.route('/api/conversations', methods=['GET'])
+def get_conversations():
+    """Get all conversations for the user"""
+    try:
+        user_id = session.get('user_id', 'default_user')
+        conversations = db_manager.get_conversations(user_id)
+        
+        return jsonify({
+            'success': True,
+            'conversations': conversations
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/conversations/<conversation_id>', methods=['GET'])
+def get_conversation(conversation_id):
+    """Get a specific conversation with all messages"""
+    try:
+        conversation = db_manager.get_conversation(conversation_id)
+        
+        if not conversation:
+            return jsonify({
+                'success': False,
+                'error': 'Conversation not found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'conversation': conversation
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/conversations', methods=['POST'])
+def create_conversation():
+    """Create a new conversation"""
+    try:
+        data = request.get_json() or {}
+        user_id = session.get('user_id', 'default_user')
+        title = data.get('title', 'New Conversation')
+        conversation_id = data.get('conversation_id')
+        
+        new_conversation_id = db_manager.create_conversation(
+            conversation_id=conversation_id,
+            title=title,
+            user_id=user_id
+        )
+        
+        return jsonify({
+            'success': True,
+            'conversation_id': new_conversation_id
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/conversations/<conversation_id>', methods=['PUT'])
+def update_conversation(conversation_id):
+    """Update conversation title"""
+    try:
+        data = request.get_json()
+        title = data.get('title')
+        
+        if not title:
+            return jsonify({
+                'success': False,
+                'error': 'Title is required'
+            }), 400
+        
+        success = db_manager.update_conversation_title(conversation_id, title)
+        
+        return jsonify({
+            'success': success
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/conversations/<conversation_id>', methods=['DELETE'])
+def delete_conversation(conversation_id):
+    """Delete a conversation"""
+    try:
+        success = db_manager.delete_conversation(conversation_id)
+        
+        return jsonify({
+            'success': success
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/messages', methods=['POST'])
+def save_message():
+    """Save a message to the database"""
+    try:
+        data = request.get_json()
+        conversation_id = data.get('conversation_id')
+        message_id = data.get('message_id')
+        role = data.get('role')
+        content = data.get('content')
+        tokens_used = data.get('tokens_used', 0)
+        metadata = data.get('metadata', {})
+        
+        if not all([conversation_id, message_id, role, content]):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required fields'
+            }), 400
+        
+        success = db_manager.save_message(
+            conversation_id=conversation_id,
+            message_id=message_id,
+            role=role,
+            content=content,
+            tokens_used=tokens_used,
+            metadata=metadata
+        )
+        
+        return jsonify({
+            'success': success
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/conversations/search', methods=['GET'])
+def search_conversations():
+    """Search conversations"""
+    try:
+        query = request.args.get('q', '').strip()
+        user_id = session.get('user_id', 'default_user')
+        
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': 'Search query is required'
+            }), 400
+        
+        results = db_manager.search_conversations(query, user_id)
+        
+        return jsonify({
+            'success': True,
+            'results': results
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/conversations/stats', methods=['GET'])
+def get_conversation_stats():
+    """Get conversation statistics"""
+    try:
+        user_id = session.get('user_id', 'default_user')
+        stats = db_manager.get_conversation_stats(user_id)
+        
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/conversations/<conversation_id>/export', methods=['GET'])
+def export_conversation(conversation_id):
+    """Export conversation data"""
+    try:
+        export_data = db_manager.export_conversation(conversation_id)
+        
+        if not export_data:
+            return jsonify({
+                'success': False,
+                'error': 'Conversation not found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'export_data': export_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/conversations/import', methods=['POST'])
+def import_conversation():
+    """Import conversation data"""
+    try:
+        data = request.get_json()
+        export_data = data.get('export_data')
+        new_conversation_id = data.get('conversation_id')
+        
+        if not export_data:
+            return jsonify({
+                'success': False,
+                'error': 'Export data is required'
+            }), 400
+        
+        conversation_id = db_manager.import_conversation(export_data, new_conversation_id)
+        
+        if not conversation_id:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to import conversation'
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'conversation_id': conversation_id
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# ============================================================================
 
 if __name__ == '__main__':
     # For local development

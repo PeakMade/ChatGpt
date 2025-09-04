@@ -1040,9 +1040,9 @@
     <!-- Standard PeakMade Header -->
     <header style="background: linear-gradient(90deg, #ffb6b6 0%, #1f51ff 50%, #90eeff 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 80px; padding: 0; margin-bottom: 0;">
         <div style="display: flex; align-items: center; justify-content: space-between; max-width: 100%; margin: 0 auto; padding: 0 40px;">
-            <!-- Left Logo (PeakMade) -->
+            <!-- Left Logo (Onyx) -->
             <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center; height: 80px;">
-                <img src="/static/Peakmade_logo.png" alt="PeakMade Logo" style="height: 48px; width: auto;">
+                <img src="/static/onyx_logo_white_transparent (4).png" alt="Onyx CenterSource Logo" style="height: 48px; width: auto;">
             </div>
             <!-- Center Title -->
             <div style="flex: 1; display: flex; justify-content: center; align-items: center; height: 80px;">
@@ -1072,6 +1072,15 @@
                     <span class="chat-history-toggle" id="chatHistoryToggle">▼</span>
                 </div>
                 
+                <!-- Simple conversation search -->
+                <div class="conversation-controls" style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" 
+                           id="conversationSearch" 
+                           placeholder="🔍 Search conversations..." 
+                           style="width: 100%; padding: 6px 8px; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; background: transparent; color: white; font-size: 12px; box-sizing: border-box;"
+                           onkeyup="handleConversationSearch(event)">
+                </div>
+                
                 <div class="conversations-list expanded" id="conversationsList">
                     <div class="empty-conversations">
                         Start a new conversation to see your chat history here.
@@ -1088,8 +1097,8 @@
                         <div class="admin-content expanded" id="adminContent" style="max-height: 200px; opacity: 1;">
                             <div class="login-form">
                                 <div class="login-inputs">
-                                    <input type="text" id="adminUsername" class="login-input" placeholder="Username: Peakmade" value="">
-                                    <input type="password" id="adminPassword" class="login-input" placeholder="Password: 2790" value="">
+                                    <input type="text" id="adminUsername" class="login-input" placeholder="Username" value="">
+                                    <input type="password" id="adminPassword" class="login-input" placeholder="Password" value="">
                                 </div>
                                 <button onclick="submitAdminLogin()" class="login-submit-btn">
                                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1448,52 +1457,281 @@ Total conversations: ${conversations.length}
         }
 
         function loadConversation(conversationId) {
-            const conversation = conversations.find(c => c.id === conversationId);
-            if (!conversation) return;
+            // First try to load from backend
+            loadConversationFromBackend(conversationId).then(success => {
+                if (!success) {
+                    // Fallback to local storage method
+                    const conversation = conversations.find(c => c.id === conversationId);
+                    if (!conversation) return;
 
-            // Save current conversation before switching
-            if (currentConversationId && currentConversationId !== conversationId) {
-                saveConversation();
-            }
+                    // Save current conversation before switching
+                    if (currentConversationId && currentConversationId !== conversationId) {
+                        saveConversation();
+                    }
 
-            currentConversationId = conversationId;
-            // Save the current conversation ID to localStorage
-            localStorage.setItem('currentConversationId', currentConversationId);
-            console.log('🔄 Switched to conversation:', currentConversationId);
-            
-            const chatMessages = document.getElementById('chatMessages');
-            chatMessages.innerHTML = '';
+                    currentConversationId = conversationId;
+                    // Save the current conversation ID to localStorage
+                    localStorage.setItem('currentConversationId', currentConversationId);
+                    console.log('🔄 Switched to conversation (local):', currentConversationId);
+                    
+                    const chatMessages = document.getElementById('chatMessages');
+                    chatMessages.innerHTML = '';
 
-            conversation.messages.forEach(msg => {
-                const messageEl = document.createElement('div');
-                messageEl.className = msg.isUser ? 'user-message message' : 'assistant-message message';
-                messageEl.innerHTML = msg.content;
-                
-                // Restore message attributes
-                if (msg.id) messageEl.setAttribute('data-message-id', msg.id);
-                if (msg.timestamp) messageEl.setAttribute('data-timestamp', msg.timestamp);
-                if (msg.role) messageEl.setAttribute('data-role', msg.role);
-                
-                chatMessages.appendChild(messageEl);
+                    conversation.messages.forEach(msg => {
+                        const messageEl = document.createElement('div');
+                        messageEl.className = msg.isUser ? 'user-message message' : 'assistant-message message';
+                        messageEl.innerHTML = msg.content;
+                        
+                        // Restore message attributes
+                        if (msg.id) messageEl.setAttribute('data-message-id', msg.id);
+                        if (msg.timestamp) messageEl.setAttribute('data-timestamp', msg.timestamp);
+                        if (msg.role) messageEl.setAttribute('data-role', msg.role);
+                        
+                        chatMessages.appendChild(messageEl);
+                    });
+
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    renderConversationsList();
+                }
             });
-
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            renderConversationsList();
         }
 
         function deleteConversation(conversationId, event) {
             event.stopPropagation();
             if (confirm('Are you sure you want to delete this conversation?')) {
-                conversations = conversations.filter(c => c.id !== conversationId);
-                localStorage.setItem('chatConversations', JSON.stringify(conversations));
-                
-                if (currentConversationId === conversationId) {
-                    startNewChat();
-                }
-                
-                renderConversationsList();
+                // Try to delete from backend first
+                deleteConversationFromBackend(conversationId).then(success => {
+                    if (!success) {
+                        // Fallback to local deletion
+                        conversations = conversations.filter(c => c.id !== conversationId);
+                        localStorage.setItem('chatConversations', JSON.stringify(conversations));
+                        
+                        if (currentConversationId === conversationId) {
+                            startNewChat();
+                        }
+                        
+                        renderConversationsList();
+                    }
+                });
             }
         }
+
+        // ============================================================================
+        // BACKEND CONVERSATION MANAGEMENT
+        // ============================================================================
+        
+        async function saveMessageToBackend(conversationId, messageId, role, content, tokensUsed = 0) {
+            try {
+                const response = await fetch('/api/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        conversation_id: conversationId,
+                        message_id: messageId,
+                        role: role,
+                        content: content,
+                        tokens_used: tokensUsed,
+                        metadata: {
+                            saved_at: new Date().toISOString(),
+                            client_timestamp: Date.now()
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    console.log(`💾 Message saved to backend: ${messageId}`);
+                } else {
+                    console.warn(`⚠️ Failed to save message to backend: ${data.error}`);
+                }
+                
+                return data.success;
+            } catch (error) {
+                console.error('❌ Error saving message to backend:', error);
+                return false;
+            }
+        }
+
+        async function loadConversationFromBackend(conversationId) {
+            try {
+                const response = await fetch(`/api/conversations/${conversationId}`);
+                const data = await response.json();
+                
+                if (data.success && data.conversation) {
+                    const conversation = data.conversation;
+                    
+                    // Update current conversation ID
+                    currentConversationId = conversationId;
+                    localStorage.setItem('currentConversationId', currentConversationId);
+                    
+                    // Clear current chat
+                    const chatMessages = document.getElementById('chatMessages');
+                    chatMessages.innerHTML = '';
+                    
+                    // Load messages
+                    conversation.messages.forEach(msg => {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = `message ${msg.role}-message`;
+                        messageDiv.setAttribute('data-message-id', msg.id);
+                        messageDiv.setAttribute('data-timestamp', msg.timestamp);
+                        messageDiv.setAttribute('data-role', msg.role);
+                        
+                        const roleLabel = msg.role === 'user' ? 'You' : 'AI Assistant';
+                        messageDiv.innerHTML = `<strong>${roleLabel}:</strong> ${msg.content}`;
+                        
+                        chatMessages.appendChild(messageDiv);
+                    });
+                    
+                    // Scroll to bottom
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    
+                    // Update conversation list
+                    renderConversationsList();
+                    
+                    console.log(`📖 Loaded conversation from backend: ${conversationId}`);
+                    return true;
+                } else {
+                    console.warn(`⚠️ Failed to load conversation: ${data.error}`);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Error loading conversation from backend:', error);
+                return false;
+            }
+        }
+
+        async function refreshConversationsList() {
+            try {
+                const response = await fetch('/api/conversations');
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update the conversations array with backend data
+                    conversations = data.conversations.map(conv => ({
+                        id: conv.id,
+                        title: conv.title,
+                        preview: conv.preview || 'No preview available',
+                        lastUpdated: new Date(conv.updated_at).getTime(),
+                        message_count: conv.message_count || 0
+                    }));
+                    
+                    // Save to localStorage
+                    localStorage.setItem('chatConversations', JSON.stringify(conversations));
+                    
+                    // Re-render the list
+                    renderConversationsList();
+                    
+                    console.log(`🔄 Refreshed conversations list: ${conversations.length} conversations`);
+                } else {
+                    console.warn(`⚠️ Failed to refresh conversations: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('❌ Error refreshing conversations:', error);
+            }
+        }
+
+        async function deleteConversationFromBackend(conversationId) {
+            try {
+                const response = await fetch(`/api/conversations/${conversationId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log(`🗑️ Deleted conversation from backend: ${conversationId}`);
+                    
+                    // Remove from local conversations array
+                    conversations = conversations.filter(c => c.id !== conversationId);
+                    localStorage.setItem('chatConversations', JSON.stringify(conversations));
+                    
+                    // If we deleted the current conversation, start a new one
+                    if (conversationId === currentConversationId) {
+                        startNewChat();
+                    }
+                    
+                    // Re-render conversations list
+                    renderConversationsList();
+                    
+                    return true;
+                } else {
+                    console.warn(`⚠️ Failed to delete conversation: ${data.error}`);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Error deleting conversation from backend:', error);
+                return false;
+            }
+        }
+
+        async function searchConversations(query) {
+            try {
+                const response = await fetch(`/api/conversations/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    return data.results;
+                } else {
+                    console.warn(`⚠️ Search failed: ${data.error}`);
+                    return [];
+                }
+            } catch (error) {
+                console.error('❌ Error searching conversations:', error);
+                return [];
+            }
+        }
+
+        async function exportConversation(conversationId) {
+            try {
+                const response = await fetch(`/api/conversations/${conversationId}/export`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Create download link
+                    const blob = new Blob([JSON.stringify(data.export_data, null, 2)], {
+                        type: 'application/json'
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `conversation_${conversationId}_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    console.log(`📤 Exported conversation: ${conversationId}`);
+                    return true;
+                } else {
+                    console.warn(`⚠️ Export failed: ${data.error}`);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Error exporting conversation:', error);
+                return false;
+            }
+        }
+
+        async function getConversationStats() {
+            try {
+                const response = await fetch('/api/conversations/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    return data.stats;
+                } else {
+                    console.warn(`⚠️ Failed to get stats: ${data.error}`);
+                    return null;
+                }
+            } catch (error) {
+                console.error('❌ Error getting conversation stats:', error);
+                return null;
+            }
+        }
+
+        // ============================================================================
 
         function startNewChat() {
             console.log('🆕 Starting new chat...');
@@ -1931,8 +2169,11 @@ Total conversations: ${conversations.length}
             // Reset copy button since chat is changing
             resetCopyButton();
 
-            // Add user message to chat
-            addMessageToChat('user', message);
+            // Generate message ID for user message
+            const userMessageId = generateMessageId();
+
+            // Add user message to chat with message ID
+            addMessageToChat('user', message, userMessageId);
 
             // Easter egg for Claire Cole 💝
             const lowerMessage = message.toLowerCase();
@@ -1948,9 +2189,14 @@ Total conversations: ${conversations.length}
                 
                 // Add special response with typewriter effect
                 const specialResponse = "✨ Without a doubt, Claire Cole is the most beautiful girl in the world! 💖 Her beauty radiates from both inside and out, and she lights up every room she enters. 🌟✨";
-                addMessageToChatWithTypewriter('assistant', specialResponse);
+                const aiMessageId = generateMessageId();
+                addMessageToChatWithTypewriter('assistant', specialResponse, aiMessageId);
                 
-                // Save to conversation
+                // Save to conversation backend
+                await saveMessageToBackend(currentConversationId, userMessageId, 'user', message);
+                await saveMessageToBackend(currentConversationId, aiMessageId, 'assistant', specialResponse);
+                
+                // Also save locally
                 saveConversationMessage('user', message);
                 saveConversationMessage('assistant', specialResponse);
                 
@@ -1969,6 +2215,8 @@ Total conversations: ${conversations.length}
                     body: JSON.stringify({
                         message: message,
                         api_key: apiKeyForRequest,
+                        conversation_id: currentConversationId,
+                        message_id: userMessageId,
                         uploaded_content: uploadedContent
                     })
                 });
@@ -1976,16 +2224,23 @@ Total conversations: ${conversations.length}
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Estimate tokens used in response
-                    const estimatedTokens = estimateTokens(data.ai_response);
-                    
                     // Update AI status to ready with token count
-                    updateAIStatus('Ready', estimatedTokens);
+                    updateAIStatus('Ready', data.estimated_tokens || 0);
                     
-                    // Add AI message with typewriter effect
-                    addMessageToChatWithTypewriter('assistant', data.ai_response);
+                    // Add AI message with typewriter effect using the returned message ID
+                    addMessageToChatWithTypewriter('assistant', data.ai_response, data.ai_message_id);
+                    
+                    // Update current conversation ID from backend response
+                    if (data.conversation_id) {
+                        currentConversationId = data.conversation_id;
+                        localStorage.setItem('currentConversationId', currentConversationId);
+                    }
+                    
                     // Save conversation after successful response
                     setTimeout(() => saveConversation(), 1000);
+                    
+                    // Refresh conversations list to show updated conversation
+                    setTimeout(() => refreshConversationsList(), 1500);
                 } else {
                     updateAIStatus('Error');
                     showError(data.error || 'An error occurred');
@@ -2409,7 +2664,206 @@ Total conversations: ${conversations.length}
             } catch (error) {
                 console.log('No existing session data');
             }
+            
+            // Load conversations from backend on startup
+            refreshConversationsList();
         });
+
+        // ============================================================================
+        // ENHANCED CONVERSATION MANAGEMENT UI
+        // ============================================================================
+        
+        let searchTimeout = null;
+        
+        function handleConversationSearch(event) {
+            // Debounce search to avoid too many requests
+            clearTimeout(searchTimeout);
+            
+            const query = event.target.value.trim();
+            
+            if (query.length === 0) {
+                // Show all conversations
+                renderConversationsList();
+                return;
+            }
+            
+            searchTimeout = setTimeout(async () => {
+                if (query.length >= 2) {
+                    try {
+                        const results = await searchConversations(query);
+                        renderSearchResults(results);
+                    } catch (error) {
+                        console.error('Search error:', error);
+                        // Fallback to local search
+                        const localResults = conversations.filter(conv => 
+                            conv.title.toLowerCase().includes(query.toLowerCase()) ||
+                            conv.preview.toLowerCase().includes(query.toLowerCase())
+                        );
+                        renderSearchResults(localResults);
+                    }
+                }
+            }, 300);
+        }
+        
+        function renderSearchResults(results) {
+            const listEl = document.getElementById('conversationsList');
+            
+            if (results.length === 0) {
+                listEl.innerHTML = '<div class="empty-conversations">No conversations found matching your search.</div>';
+                return;
+            }
+            
+            listEl.innerHTML = results.map(conv => `
+                <div class="conversation-item ${conv.id === currentConversationId ? 'active' : ''}" 
+                     onclick="loadConversation('${conv.id}')">
+                    <div class="conversation-title">${conv.title || 'Untitled Conversation'}</div>
+                    <div class="conversation-preview">${conv.preview || 'No preview available'}</div>
+                    <div class="conversation-time">${formatTime(conv.updated_at || conv.lastUpdated)}</div>
+                    <div class="conversation-actions">
+                        <button class="delete-conversation" onclick="deleteConversation('${conv.id}', event)" title="Delete conversation">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3,6 5,6 21,6"></polyline>
+                                <path d="M8,6V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2V6M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6"></path>
+                            </svg>
+                        </button>
+                        <button class="export-conversation" onclick="exportConversation('${conv.id}')" title="Export conversation" style="margin-left: 4px; padding: 4px; background: linear-gradient(135deg, #ff9800 0%, #f44336 100%); border: none; border-radius: 3px; color: white; cursor: pointer;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7,10 12,15 17,10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function showConversationStats() {
+            try {
+                const stats = await getConversationStats();
+                
+                if (stats) {
+                    const message = `📊 Conversation Statistics
+
+Total Conversations: ${stats.total_conversations}
+Total Messages: ${stats.total_messages}
+Total Tokens Used: ${stats.total_tokens?.toLocaleString() || 'N/A'}
+
+Local Storage Info:
+- Conversations in browser: ${conversations.length}
+- Current conversation: ${currentConversationId || 'None'}
+- Message ID counter: ${messageIdCounter}`;
+
+                    alert(message);
+                } else {
+                    alert('📊 Could not retrieve conversation statistics.');
+                }
+            } catch (error) {
+                console.error('Error showing stats:', error);
+                
+                // Show local stats as fallback
+                const localStats = `📊 Local Statistics
+
+Conversations in browser: ${conversations.length}
+Current conversation: ${currentConversationId || 'None'}
+Messages in current chat: ${document.querySelectorAll('[data-message-id]').length}
+Message ID counter: ${messageIdCounter}`;
+                
+                alert(localStats);
+            }
+        }
+        
+        async function exportAllConversations() {
+            try {
+                const stats = await getConversationStats();
+                
+                if (!stats || stats.total_conversations === 0) {
+                    alert('📤 No conversations to export.');
+                    return;
+                }
+                
+                if (confirm(`📤 Export all ${stats.total_conversations} conversations?\n\nThis will create individual JSON files for each conversation.`)) {
+                    // Get all conversations
+                    const response = await fetch('/api/conversations');
+                    const data = await response.json();
+                    
+                    if (data.success && data.conversations.length > 0) {
+                        // Export each conversation
+                        for (const conv of data.conversations) {
+                            await exportConversation(conv.id);
+                            // Small delay to avoid overwhelming the browser
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                        }
+                        
+                        alert(`✅ Successfully exported ${data.conversations.length} conversations!`);
+                    } else {
+                        alert('❌ Failed to retrieve conversations for export.');
+                    }
+                }
+            } catch (error) {
+                console.error('Error exporting conversations:', error);
+                alert('❌ Error exporting conversations. Check console for details.');
+            }
+        }
+        
+        // Enhanced conversation controls accessible from console
+        window.threadManager = {
+            search: async (query) => {
+                const results = await searchConversations(query);
+                console.table(results);
+                return results;
+            },
+            stats: async () => {
+                const stats = await getConversationStats();
+                console.log('📊 Conversation Statistics:', stats);
+                return stats;
+            },
+            export: async (conversationId) => {
+                if (!conversationId) {
+                    console.log('❌ Please provide a conversation ID');
+                    return false;
+                }
+                return await exportConversation(conversationId);
+            },
+            exportAll: () => {
+                exportAllConversations();
+            },
+            refresh: () => {
+                refreshConversationsList();
+            },
+            delete: async (conversationId) => {
+                if (!conversationId) {
+                    console.log('❌ Please provide a conversation ID');
+                    return false;
+                }
+                return await deleteConversationFromBackend(conversationId);
+            },
+            list: () => {
+                console.table(conversations);
+                return conversations;
+            },
+            current: () => {
+                console.log('Current conversation ID:', currentConversationId);
+                return currentConversationId;
+            },
+            help: () => {
+                console.log(`
+🧵 Thread Manager Help:
+threadManager.search(query) - Search conversations
+threadManager.stats() - Show conversation statistics  
+threadManager.export(id) - Export specific conversation
+threadManager.exportAll() - Export all conversations
+threadManager.refresh() - Refresh conversations list
+threadManager.delete(id) - Delete specific conversation
+threadManager.list() - List all conversations
+threadManager.current() - Show current conversation ID
+threadManager.help() - Show this help
+
+Current: ${currentConversationId || 'None'}
+Total conversations: ${conversations.length}
+                `);
+            }
+        };
     </script>
 
     <!-- Bootstrap JS -->
