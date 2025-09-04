@@ -1,5 +1,0 @@
-streamlit
-openai
-pymongo
-PyPDF2
-python-dotenv

@@ -1,11 +1,10 @@
 """
-ChatGPT Clone - Streamlit Application
-A modern, responsive web application that replicates ChatGPT functionality
+AI BOOST - Flask Application
+A modern, responsive web application that replicates ChatGPT functionality using Flask
 """
 
-import streamlit as st
+from flask import Flask, render_template, request, jsonify, session
 import openai
-import pymongo
 from datetime import datetime
 import uuid
 import os
@@ -13,213 +12,156 @@ from typing import List, Dict, Any
 import PyPDF2
 import io
 import json
-from bson import ObjectId
 
-# Configure page
-st.set_page_config(
-    page_title="ChatGPT Clone",
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Azure Key Vault imports
+try:
+    from azure.identity import DefaultAzureCredential
+    from azure.keyvault.secrets import SecretClient
+    AZURE_AVAILABLE = True
+except ImportError:
+    AZURE_AVAILABLE = False
 
-# Custom CSS for modern UI
-st.markdown("""
-<style>
-    .main-header {
-        text-align: center;
-        padding: 2rem 0;
-        border-bottom: 1px solid #e0e0e0;
-        margin-bottom: 2rem;
-    }
-    
-    .chat-container {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    
-    .user-message {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        border-left: 4px solid #0066cc;
-    }
-    
-    .assistant-message {
-        background-color: #ffffff;
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        border-left: 4px solid #00cc66;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .sidebar-content {
-        padding: 1rem;
-    }
-    
-    .category-item {
-        padding: 0.5rem;
-        margin: 0.25rem 0;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-    
-    .conversation-item {
-        padding: 0.75rem;
-        margin: 0.5rem 0;
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        cursor: pointer;
-    }
-    
-    .conversation-item:hover {
-        background-color: #f0f2f6;
-        border-color: #0066cc;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Configuration
+import config
 
-# Initialize session state
-if 'messages' not in st.session_state:
-    st.session_state.messages = []
-if 'current_conversation_id' not in st.session_state:
-    st.session_state.current_conversation_id = None
-if 'user_id' not in st.session_state:
-    st.session_state.user_id = str(uuid.uuid4())
-if 'categories' not in st.session_state:
-    st.session_state.categories = ["General", "Work", "Learning", "Creative"]
-if 'selected_category' not in st.session_state:
-    st.session_state.selected_category = "General"
+# Load environment variables from .env file for local development
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv not installed, skip loading
+    pass
 
-# Database connection
-@st.cache_resource
-def init_mongodb():
-    """Initialize MongoDB connection"""
+app = Flask(__name__)
+# Use a consistent secret key for development, secure random for production
+app.secret_key = config.SECRET_KEY
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
+
+def get_api_key_from_keyvault():
+    """Get OpenAI API key from Azure Key Vault"""
+    if not AZURE_AVAILABLE:
+        return None
+    
     try:
-        # Use MongoDB Atlas connection string from environment variables
-        mongo_uri = os.getenv("MONGODB_URI", "")
-        if not mongo_uri or mongo_uri == "mongodb://localhost:27017/":
-            # Fall back to session state storage if no MongoDB configured
-            return None
-            
-        client = pymongo.MongoClient(mongo_uri)
-        # Test the connection
-        client.admin.command('ping')
-        db = client.chatgpt_clone
-        return db
+        # Use managed identity for authentication
+        credential = DefaultAzureCredential()
+        client = SecretClient(vault_url=config.KEYVAULT_URL, credential=credential)
+        
+        # Retrieve the secret
+        secret = client.get_secret(config.OPENAI_SECRET_NAME)
+        return secret.value
     except Exception as e:
-        # Silently fall back to session storage
+        # Key Vault not available or configured, fall back to environment variables
         return None
 
-# OpenAI configuration
-def init_openai():
-    """Initialize OpenAI client"""
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        try:
-            api_key = st.secrets.get("OPENAI_API_KEY", "")
-        except:
-            api_key = ""
+def get_api_key():
+    """Get API key from Key Vault, environment variables, or return None for user input"""
+    # Try Azure Key Vault first (production)
+    keyvault_key = get_api_key_from_keyvault()
+    if keyvault_key and keyvault_key.startswith('sk-') and len(keyvault_key) > 20:
+        print(f"Using Key Vault API key (length: {len(keyvault_key)})")
+        return keyvault_key
     
-    if not api_key:
-        with st.sidebar:
-            st.warning("🔑 OpenAI API key required")
-            api_key = st.text_input("Enter your OpenAI API Key:", type="password", key="api_key_input")
-            if api_key:
-                st.success("✅ API key provided!")
-                # Initialize OpenAI client with the new v1.0+ API
-                client = openai.OpenAI(api_key=api_key)
-                return client
-            else:
-                st.info("💡 Please enter your OpenAI API key to start chatting")
-                st.markdown("Get your API key from: https://platform.openai.com/api-keys")
-                return None
+    # Fall back to environment variable (local development)
+    env_key = os.environ.get('OPENAI_API_KEY', '').strip()
+    if env_key and env_key.startswith('sk-') and len(env_key) > 20:
+        print(f"Using environment API key (length: {len(env_key)})")
+        return env_key
     
-    # Initialize OpenAI client with the new v1.0+ API
-    client = openai.OpenAI(api_key=api_key)
-    return client
-
-# Database operations
-def save_conversation(db, conversation_data):
-    """Save conversation to MongoDB"""
-    if db:
-        try:
-            conversations = db.conversations
-            result = conversations.insert_one(conversation_data)
-            return str(result.inserted_id)
-        except Exception as e:
-            st.error(f"Failed to save conversation: {e}")
-            return None
+    # Debug info
+    print(f"No API key found:")
+    print(f"  - Key Vault available: {AZURE_AVAILABLE}")
+    print(f"  - Key Vault result: {bool(keyvault_key)}")
+    print(f"  - Environment var exists: {bool(os.environ.get('OPENAI_API_KEY'))}")
+    print(f"  - Environment var value length: {len(os.environ.get('OPENAI_API_KEY', ''))}")
+    
+    # No valid key found, require user input
     return None
 
-def load_conversations(db, user_id, category=None):
-    """Load conversations from MongoDB"""
-    if db:
-        try:
-            conversations = db.conversations
-            query = {"user_id": user_id}
-            if category and category != "All":
-                query["category"] = category
-            
-            results = conversations.find(query).sort("created_at", -1)
-            return list(results)
-        except Exception as e:
-            st.error(f"Failed to load conversations: {e}")
-            return []
-    return []
-
-def update_conversation(db, conversation_id, messages):
-    """Update existing conversation"""
-    if db:
-        try:
-            conversations = db.conversations
-            conversations.update_one(
-                {"_id": ObjectId(conversation_id)},
-                {
-                    "$set": {
-                        "messages": messages,
-                        "updated_at": datetime.now()
-                    }
-                }
-            )
-            return True
-        except Exception as e:
-            st.error(f"Failed to update conversation: {e}")
-            return False
-    return False
-
-# File processing functions
-def process_pdf(uploaded_file):
-    """Extract text from PDF file"""
+def get_openai_client(api_key):
+    """Initialize OpenAI client with API key"""
+    if not api_key:
+        return None
     try:
-        pdf_reader = PyPDF2.PdfReader(uploaded_file)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text() + "\n"
-        return text
+        client = openai.OpenAI(api_key=api_key)
+        return client
     except Exception as e:
-        st.error(f"Failed to process PDF: {e}")
-        return ""
+        return None
 
-def process_text_file(uploaded_file):
-    """Process text file"""
-    try:
-        content = uploaded_file.read().decode("utf-8")
-        return content
-    except Exception as e:
-        st.error(f"Failed to process text file: {e}")
-        return ""
-
-# Chat function
-def get_chat_response(client, messages, uploaded_content=""):
+def get_chat_response(api_key, messages, uploaded_content=""):
     """Get response from OpenAI API"""
+    if not api_key:
+        return "Error: No OpenAI API key provided."
+        
     try:
+        # Clean the API key of any whitespace
+        api_key = api_key.strip()
+        try:
+            # Method 1: Basic client creation
+            client = openai.OpenAI(api_key=api_key)
+        except Exception:
+            try:
+                # Method 2: Set API key globally (fallback for older versions)
+                openai.api_key = api_key
+                client = openai.OpenAI()
+            except Exception:
+                # Method 3: Use simplified approach
+                return get_chat_response_legacy(api_key, messages, uploaded_content)
+        
         # Prepare messages for OpenAI
         openai_messages = []
+        
+        # Add system prompt with 2025 knowledge context
+        system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
+        
+Key information about your knowledge:
+- Current date: August 27, 2025
+- You have access to information and events through 2025
+- You can discuss recent developments, technologies, and current events
+- When discussing dates or timelines, remember it's currently 2025
+
+CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
+- Always use double line breaks between paragraphs for maximum readability
+- Start each major section with a clear heading using ### or **bold** formatting
+- Use proper indentation and spacing for nested content
+- When providing multiple steps or points, use bullet points (•) or numbered lists (1., 2., 3.)
+- Add blank lines before and after all lists, code blocks, or formulas
+- Break up long explanations into short, digestible paragraphs (3-4 sentences max)
+- Use proper line spacing: paragraph → blank line → paragraph → blank line
+- For processes or instructions, use numbered steps with descriptions
+- For lists of features or benefits, use bullet points with clear spacing
+- Ensure each response has excellent visual hierarchy and white space
+- Use indentation for sub-points and nested information
+- Always separate different topics with clear visual breaks
+
+SPACING EXAMPLE:
+### Main Topic
+
+This is a paragraph with good spacing.
+
+This is another paragraph after a blank line.
+
+1. First step in a process
+   - Sub-point with indentation
+   - Another sub-point
+
+2. Second step with proper spacing
+
+• Bullet point for features
+• Another bullet point
+• Third bullet point
+
+### Next Section
+
+New content starts here with proper separation.
+
+Please provide helpful, accurate, and up-to-date responses with excellent formatting and spacing."""
+
+        openai_messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
         
         # Add uploaded content as context if provided
         if uploaded_content:
@@ -235,203 +177,269 @@ def get_chat_response(client, messages, uploaded_content=""):
                 "content": msg["content"]
             })
         
-        # Get response from OpenAI using new client API
+        # Get response from OpenAI using GPT-4o-mini
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",  # Latest efficient model with better performance
             messages=openai_messages,
-            max_tokens=1000,
+            max_tokens=1500,  # Increased for more detailed responses
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content
+    except openai.AuthenticationError as e:
+        return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
+    except openai.RateLimitError:
+        return "Error: Rate limit exceeded. Please try again later."
+    except Exception as e:
+        error_msg = str(e).lower()
+        if 'quota' in error_msg or 'billing' in error_msg:
+            return "Error: Insufficient quota. Please check your OpenAI account billing."
+        elif 'authentication' in error_msg or 'api key' in error_msg:
+            return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
+        else:
+            return f"Error: {str(e)}"
+
+def get_chat_response_legacy(api_key, messages, uploaded_content=""):
+    """Simplified OpenAI API approach"""
+    try:
+        # Create client with explicit API key
+        client = openai.OpenAI(api_key=api_key)
+        # Prepare messages for OpenAI
+        openai_messages = []
+        
+        # Add system prompt with 2025 knowledge context
+        system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
+        
+Key information about your knowledge:
+- Current date: August 27, 2025
+- You have access to information and events through 2025
+- You can discuss recent developments, technologies, and current events
+- When discussing dates or timelines, remember it's currently 2025
+
+CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
+- Always use double line breaks between paragraphs for maximum readability
+- Start each major section with a clear heading using ### or **bold** formatting
+- Use proper indentation and spacing for nested content
+- When providing multiple steps or points, use bullet points (•) or numbered lists (1., 2., 3.)
+- Add blank lines before and after all lists, code blocks, or formulas
+- Break up long explanations into short, digestible paragraphs (3-4 sentences max)
+- Use proper line spacing: paragraph → blank line → paragraph → blank line
+- For processes or instructions, use numbered steps with descriptions
+- For lists of features or benefits, use bullet points with clear spacing
+- Ensure each response has excellent visual hierarchy and white space
+- Use indentation for sub-points and nested information
+- Always separate different topics with clear visual breaks
+
+SPACING EXAMPLE:
+### Main Topic
+
+This is a paragraph with good spacing.
+
+This is another paragraph after a blank line.
+
+1. First step in a process
+   - Sub-point with indentation
+   - Another sub-point
+
+2. Second step with proper spacing
+
+• Bullet point for features
+• Another bullet point
+• Third bullet point
+
+### Next Section
+
+New content starts here with proper separation.
+
+Please provide helpful, accurate, and up-to-date responses with excellent formatting and spacing."""
+
+        openai_messages.append({
+            "role": "system",
+            "content": system_prompt
+        })
+        
+        # Add uploaded content as context if provided
+        if uploaded_content:
+            openai_messages.append({
+                "role": "system",
+                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions."
+            })
+        
+        # Add conversation history
+        for msg in messages:
+            openai_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+        
+        # Use modern API call with GPT-4o-mini
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",  # Latest efficient model with better performance
+            messages=openai_messages,
+            max_tokens=1500,
             temperature=0.7
         )
         
         return response.choices[0].message.content
     except Exception as e:
-        st.error(f"OpenAI API error: {e}")
-        return "Sorry, I encountered an error while processing your request."
+        return f"Error (fallback): {str(e)}"
 
-# Main application
-def main():
-    # Initialize services
-    db = init_mongodb()
-    openai_client = init_openai()
-    
-    # Header
-    st.markdown("""
-    <div class="main-header">
-        <h1>🤖 ChatGPT Clone</h1>
-        <p>A modern AI assistant powered by OpenAI</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Sidebar for conversation management
-    with st.sidebar:
-        st.markdown('<div class="sidebar-content">', unsafe_allow_html=True)
-        
-        st.header("💬 Conversations")
-        
-        # New conversation button
-        if st.button("➕ New Conversation", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.current_conversation_id = None
-            st.rerun()
-        
-        # Category management
-        st.subheader("📁 Categories")
-        
-        # Add new category
-        new_category = st.text_input("Add Category", placeholder="Enter category name")
-        if st.button("Add") and new_category:
-            if new_category not in st.session_state.categories:
-                st.session_state.categories.append(new_category)
-                st.success(f"Added category: {new_category}")
-                st.rerun()
-        
-        # Category selection
-        category_options = ["All"] + st.session_state.categories
-        selected_category = st.selectbox("Filter by Category", category_options)
-        
-        # Save current conversation
-        if st.session_state.messages and st.button("💾 Save Conversation"):
-            if db:
-                conversation_data = {
-                    "user_id": st.session_state.user_id,
-                    "title": st.session_state.messages[0]["content"][:50] + "..." if st.session_state.messages else "New Conversation",
-                    "category": st.session_state.selected_category,
-                    "messages": st.session_state.messages,
-                    "created_at": datetime.now(),
-                    "updated_at": datetime.now()
-                }
-                
-                if st.session_state.current_conversation_id:
-                    # Update existing conversation
-                    update_conversation(db, st.session_state.current_conversation_id, st.session_state.messages)
-                    st.success("Conversation updated!")
-                else:
-                    # Save new conversation
-                    conversation_id = save_conversation(db, conversation_data)
-                    if conversation_id:
-                        st.session_state.current_conversation_id = conversation_id
-                        st.success("Conversation saved!")
-        
-        # Load conversations
-        st.subheader("📋 Saved Conversations")
-        conversations = load_conversations(db, st.session_state.user_id, selected_category if selected_category != "All" else None)
-        
-        for conv in conversations[:10]:  # Limit to recent 10
-            with st.container():
-                title = conv.get("title", "Untitled")
-                category = conv.get("category", "General")
-                created = conv.get("created_at", datetime.now()).strftime("%m/%d %H:%M")
-                
-                if st.button(f"📄 {title[:30]}...", key=f"conv_{conv['_id']}"):
-                    st.session_state.messages = conv.get("messages", [])
-                    st.session_state.current_conversation_id = str(conv["_id"])
-                    st.session_state.selected_category = category
-                    st.rerun()
-                
-                st.caption(f"🏷️ {category} • 📅 {created}")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Main chat interface
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-        
-        # File upload section
-        st.subheader("📎 Upload Content")
-        uploaded_file = st.file_uploader(
-            "Upload a file to include in your conversation",
-            type=['txt', 'pdf'],
-            help="Upload text files or PDFs to provide context for your questions"
-        )
-        
-        uploaded_content = ""
-        if uploaded_file:
-            with st.spinner("Processing file..."):
-                if uploaded_file.type == "application/pdf":
-                    uploaded_content = process_pdf(uploaded_file)
-                else:
-                    uploaded_content = process_text_file(uploaded_file)
-                
-                if uploaded_content:
-                    st.success(f"✅ File processed: {len(uploaded_content)} characters")
-                    with st.expander("📄 View uploaded content"):
-                        st.text_area("Content", uploaded_content, height=200, disabled=True)
-        
-        # Display chat messages
-        st.subheader("💬 Chat")
-        
-        # Chat history
-        for message in st.session_state.messages:
-            if message["role"] == "user":
-                st.markdown(f"""
-                <div class="user-message">
-                    <strong>You:</strong><br>
-                    {message["content"]}
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class="assistant-message">
-                    <strong>Assistant:</strong><br>
-                    {message["content"]}
-                </div>
-                """, unsafe_allow_html=True)
-        
-        # Chat input
-        if prompt := st.chat_input("Type your message here...", disabled=not openai_client):
-            # Add user message
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            
-            # Display user message immediately
-            st.markdown(f"""
-            <div class="user-message">
-                <strong>You:</strong><br>
-                {prompt}
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Get AI response
-            with st.spinner("Thinking..."):
-                response = get_chat_response(openai_client, st.session_state.messages, uploaded_content)
-                st.session_state.messages.append({"role": "assistant", "content": response})
-            
-            # Display assistant response
-            st.markdown(f"""
-            <div class="assistant-message">
-                <strong>Assistant:</strong><br>
-                {response}
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.rerun()
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        # Category selection for new messages
-        st.subheader("🏷️ Current Category")
-        st.session_state.selected_category = st.selectbox(
-            "Category for this conversation",
-            st.session_state.categories,
-            index=st.session_state.categories.index(st.session_state.selected_category)
-        )
-        
-        # Conversation stats
-        st.subheader("📊 Stats")
-        st.metric("Messages", len(st.session_state.messages))
-        if st.session_state.messages:
-            word_count = sum(len(msg["content"].split()) for msg in st.session_state.messages)
-            st.metric("Total Words", word_count)
-        
-        # Keyboard shortcuts help
-        st.subheader("⌨️ Shortcuts")
-        st.markdown("""
-        - **Ctrl+Enter**: Send message
-        - **Ctrl+N**: New conversation
-        - **Ctrl+S**: Save conversation
-        """)
+def extract_text_from_pdf(pdf_file):
+    """Extract text from PDF file"""
+    try:
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        return text
+    except Exception as e:
+        return f"Error reading PDF: {str(e)}"
 
-if __name__ == "__main__":
-    main()
+@app.route('/')
+def index():
+    """Main page"""
+    # Initialize session variables if not present
+    if 'messages' not in session:
+        session['messages'] = []
+    if 'api_key' not in session:
+        session['api_key'] = ''
+    if 'conversation_id' not in session:
+        session['conversation_id'] = str(uuid.uuid4())
+    
+    return render_template('index.html')
+
+@app.route('/api-key-status')
+def api_key_status():
+    """Check if API key is configured in Key Vault or environment"""
+    api_key = get_api_key()
+    has_key = bool(api_key)
+    
+    # Debug info (remove after testing)
+    debug_info = {
+        'keyvault_available': AZURE_AVAILABLE,
+        'keyvault_url': config.KEYVAULT_URL,
+        'env_var_exists': bool(os.environ.get('OPENAI_API_KEY')),
+        'has_key': has_key
+    }
+    
+    return jsonify({
+        'has_environment_key': has_key,
+        'debug': debug_info
+    })
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    """Handle chat messages"""
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '').strip()
+        user_api_key = data.get('api_key', '').strip()
+        
+        # Smart API key handling - check Key Vault and environment first
+        secure_api_key = get_api_key()
+        
+        # Use secure key (Key Vault/environment) if available, otherwise user input
+        if secure_api_key:
+            api_key = secure_api_key
+        else:
+            api_key = user_api_key
+        
+        if not user_message:
+            return jsonify({'error': 'Message cannot be empty'}), 400
+        
+        if not api_key:
+            return jsonify({'error': 'Please enter your OpenAI API key'}), 400
+        
+        # Update session API key
+        session['api_key'] = api_key
+        
+        # Add user message to session
+        user_msg = {
+            "role": "user",
+            "content": user_message,
+            "timestamp": datetime.now().isoformat()
+        }
+        session['messages'].append(user_msg)
+        
+        # Get AI response - pass API key directly
+        ai_response = get_chat_response(api_key, session['messages'])
+        
+        # Add AI response to session
+        ai_msg = {
+            "role": "assistant", 
+            "content": ai_response,
+            "timestamp": datetime.now().isoformat()
+        }
+        session['messages'].append(ai_msg)
+        
+        # Save session
+        session.modified = True
+        
+        return jsonify({
+            'user_message': user_message,
+            'ai_response': ai_response,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    """Handle file uploads"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Process the file based on type
+        if file.filename.lower().endswith('.pdf'):
+            content = extract_text_from_pdf(file)
+        elif file.filename.lower().endswith('.txt'):
+            content = file.read().decode('utf-8')
+        else:
+            return jsonify({'error': 'Unsupported file type. Please upload PDF or TXT files.'}), 400
+        
+        return jsonify({
+            'content': content[:1000] + ('...' if len(content) > 1000 else ''),
+            'filename': file.filename,
+            'full_content': content
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'File processing error: {str(e)}'}), 500
+
+@app.route('/clear_chat', methods=['POST'])
+def clear_chat():
+    """Clear chat history"""
+    session['messages'] = []
+    session['conversation_id'] = str(uuid.uuid4())
+    session.modified = True
+    return jsonify({'success': True})
+
+@app.route('/get_messages')
+def get_messages():
+    """Get current chat messages"""
+    try:
+        # Ensure session variables exist
+        if 'messages' not in session:
+            session['messages'] = []
+        if 'api_key' not in session:
+            session['api_key'] = ''
+            
+        return jsonify({
+            'messages': session.get('messages', []),
+            'api_key': session.get('api_key', '')
+        })
+    except Exception as e:
+        return jsonify({
+            'messages': [],
+            'api_key': ''
+        })
+
+if __name__ == '__main__':
+    # For local development
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

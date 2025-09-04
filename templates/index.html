@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI BOOST</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
     <style>
         * {
             margin: 0;
@@ -13,26 +19,14 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: linear-gradient(135deg, #e8f4fd 0%, #d1e9f6 50%, #bbdff1 100%);
             min-height: 100vh;
             padding: 0;
             margin: 0;
         }
 
-        .header-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 19px 0;
-            background-color: white;
-            border-bottom: 1px solid #ddd;
-            margin: 0;
-            width: 100%;
-        }
-
         .content-wrapper {
-            padding: 20px;
+            padding: 10px;
         }
 
         .container {
@@ -40,14 +34,15 @@
             margin: 0 auto;
             display: grid;
             grid-template-columns: 300px 1fr;
-            gap: 20px;
-            height: calc(100vh - 140px);
+            gap: 15px;
+            height: calc(100vh - 80px);
         }
 
         .sidebar {
-            background: white;
+            background: linear-gradient(145deg, #ffffff 0%, #f8fcff 100%);
+            border: 1px solid rgba(31, 81, 255, 0.1);
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(31, 81, 255, 0.1);
             padding: 0;
             overflow: hidden;
             display: flex;
@@ -55,9 +50,9 @@
         }
 
         .new-chat-section {
-            padding: 20px;
+            padding: 15px;
             border-bottom: 1px solid #e0e0e0;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #6a5acd 0%, #87ceeb 100%);
         }
 
         .chat-history-header {
@@ -92,7 +87,7 @@
         .conversations-list {
             flex: 1;
             overflow-y: auto;
-            padding: 15px;
+            padding: 10px;
             transition: max-height 0.3s ease, opacity 0.3s ease;
         }
 
@@ -111,9 +106,9 @@
         .new-chat-btn {
             width: 100%;
             padding: 12px;
-            background: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%);
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(31, 81, 255, 0.3);
             border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
@@ -122,38 +117,44 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
+            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.2);
         }
 
         .new-chat-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-1px);
+            background: linear-gradient(135deg, #2d5eff 0%, #9ee8f4 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(31, 81, 255, 0.3);
         }
 
         .conversation-item {
-            padding: 12px;
-            margin-bottom: 8px;
+            padding: 10px;
+            margin-bottom: 5px;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 1px solid transparent;
             position: relative;
+            background: linear-gradient(135deg, rgba(31, 81, 255, 0.08) 0%, rgba(144, 238, 255, 0.08) 100%);
+            border-color: rgba(31, 81, 255, 0.2);
         }
 
         .conversation-item:hover {
-            background: #f8f9fa;
-            border-color: #e0e0e0;
+            background: linear-gradient(135deg, rgba(31, 81, 255, 0.12) 0%, rgba(144, 238, 255, 0.12) 100%);
+            border-color: #1f51ff;
             transform: translateX(4px);
+            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.15);
         }
 
         .conversation-item.active {
-            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%);
-            border-color: #28a745;
+            background: linear-gradient(135deg, rgba(31, 81, 255, 0.15) 0%, rgba(144, 238, 255, 0.15) 100%);
+            border-color: #90eeff;
+            box-shadow: 0 2px 8px rgba(144, 238, 255, 0.3);
         }
 
         .conversation-title {
             font-weight: 500;
             font-size: 14px;
-            color: #333;
+            color: #1f51ff;
             margin-bottom: 4px;
             white-space: nowrap;
             overflow: hidden;
@@ -171,7 +172,7 @@
 
         .conversation-time {
             font-size: 11px;
-            color: #999;
+            color: #90eeff;
         }
 
         .conversation-actions {
@@ -190,12 +191,17 @@
         .delete-conversation {
             background: none;
             border: none;
-            color: #dc3545;
+            color: #1f51ff;
             cursor: pointer;
             padding: 4px;
             border-radius: 4px;
             font-size: 12px;
-            transition: background 0.3s ease;
+            transition: all 0.3s ease;
+        }
+
+        .delete-conversation:hover {
+            background: rgba(31, 81, 255, 0.1);
+            color: #dc3545;
         }
 
         .delete-conversation:hover {
@@ -249,7 +255,7 @@
 
         .admin-toggle {
             font-size: 10px;
-            color: #28a745;
+            color: #1f51ff;
             transition: transform 0.3s ease;
             font-weight: bold;
         }
@@ -293,13 +299,13 @@
 
         .login-input:focus {
             outline: none;
-            border-color: #28a745;
-            box-shadow: 0 0 0 1px rgba(40, 167, 69, 0.1);
+            border-color: #1f51ff;
+            box-shadow: 0 0 0 1px rgba(31, 81, 255, 0.1);
         }
 
         .login-submit-btn {
             padding: 3px 6px;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%);
             color: white;
             border: none;
             border-radius: 3px;
@@ -336,11 +342,11 @@
             width: 32px;
             height: 32px;
             padding: 6px;
-            background: rgba(40, 167, 69, 0.1);
-            border: 1px solid rgba(40, 167, 69, 0.2);
+            background: rgba(31, 81, 255, 0.1);
+            border: 1px solid rgba(31, 81, 255, 0.2);
             border-radius: 50%;
             cursor: pointer;
-            color: #28a745;
+            color: #1f51ff;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
@@ -348,10 +354,10 @@
         }
 
         .settings-gear-btn:hover {
-            background: rgba(40, 167, 69, 0.15);
-            border-color: rgba(40, 167, 69, 0.3);
+            background: rgba(31, 81, 255, 0.15);
+            border-color: rgba(31, 81, 255, 0.3);
             transform: rotate(45deg) scale(1.1);
-            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.2);
         }
 
         .settings-gear-btn:active {
@@ -374,112 +380,64 @@
         }
 
         .api-key-section, .file-upload-section {
-            display: none;
+            display: none !important;
             margin-top: 10px;
         }
 
         .api-key-section.show, .file-upload-section.show {
-            display: block;
+            display: block !important;
         }
 
         .main-chat {
-            background: white;
+            background: linear-gradient(145deg, #ffffff 0%, #f8fcff 100%);
+            border: 1px solid rgba(31, 81, 255, 0.1);
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(31, 81, 255, 0.1);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
-        .header-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 19px 0;
-            background-color: white;
-            border-bottom: 1px solid #ddd;
-            margin: 0;
-            width: 100%;
-        }
-
-        .logo {
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 30px;
-        }
-
-        .logo-clean {
-            position: absolute;
-            left: 70px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            align-items: center;
-        }
-
-        .logo-clean-right {
-            position: absolute;
-            right: 70px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            align-items: center;
-        }
-
-        .logo img {
-            height: 77px;
-            width: auto;
-            object-fit: contain;
-        }
-
-        .title {
-            font-size: 36px;
-            font-weight: bold;
-            font-family: Arial, sans-serif;
-            color: #333;
-            text-align: center;
-            margin: 0;
-            padding: 0;
-        }
-
         .chat-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 10px;
+            background: linear-gradient(180deg, rgba(144, 223, 239, 0.02) 0%, rgba(31, 81, 255, 0.02) 100%);
         }
 
         .message {
             max-width: 80%;
-            padding: 15px;
+            padding: 12px;
             border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             word-wrap: break-word;
             white-space: pre-wrap;
-            line-height: 1.6;
+            line-height: 1.5;
         }
 
         .user-message {
             align-self: flex-end;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border-left: 3px solid #28a745;
+            background: linear-gradient(135deg, #1f51ff 0%, #3d6bff 100%);
+            color: white;
+            border-left: 3px solid #90eeff;
+            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.2);
         }
 
         .assistant-message {
             align-self: flex-start;
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-left: 3px solid #28a745;
+            background: linear-gradient(135deg, #90eeff 0%, #a8e6f7 100%);
+            color: #1a1a1a;
+            border-left: 3px solid #1f51ff;
+            box-shadow: 0 2px 8px rgba(144, 223, 239, 0.2);
         }
 
         .chat-input-container {
-            padding: 20px;
-            border-top: 1px solid #e0e0e0;
-            background: #f8f9fa;
+            padding: 15px;
+            border-top: 1px solid rgba(31, 81, 255, 0.1);
+            background: linear-gradient(145deg, #f8fcff 0%, #ffffff 100%);
         }
 
         .input-group {
@@ -498,45 +456,57 @@
         .chat-input {
             flex: 1;
             padding: 12px 15px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid rgba(31, 81, 255, 0.2);
             border-radius: 25px;
             font-size: 14px;
             outline: none;
-            transition: border-color 0.3s ease;
+            transition: all 0.3s ease;
+            background: linear-gradient(145deg, #ffffff 0%, #f8fcff 100%);
         }
 
         .chat-input:focus {
-            border-color: #28a745;
+            border-color: #1f51ff;
+            box-shadow: 0 0 0 3px rgba(31, 81, 255, 0.1);
+            background: #ffffff;
         }
 
         .btn {
             padding: 12px 20px;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%);
             color: white;
             border: none;
             border-radius: 25px;
             cursor: pointer;
             font-size: 14px;
-            transition: transform 0.2s ease;
+            transition: all 0.3s ease;
             font-weight: 500;
+            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.2);
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+            box-shadow: 0 6px 16px rgba(31, 81, 255, 0.3);
+            background: linear-gradient(135deg, #2d5eff 0%, #9ee8f4 100%);
         }
 
         .btn:active {
             transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.4);
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            background: linear-gradient(135deg, #90eeff 0%, #b8ecf7 100%);
+            color: #1f51ff;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #7de0f7 0%, #a5e8f5 100%);
+            box-shadow: 0 6px 16px rgba(144, 223, 239, 0.3);
         }
 
         .api-key-section {
-            margin-bottom: 8px;
-            padding: 5px;
+            margin-bottom: 4px;
+            padding: 3px;
             background: #f8f9fa;
             border-radius: 4px;
             width: 100%;
@@ -544,7 +514,7 @@
         }
 
         .api-key-section h3, .api-key-section h4 {
-            color: #28a745;
+            color: #1f51ff;
             margin-bottom: 3px;
             font-size: 10px;
             font-weight: 600;
@@ -552,20 +522,20 @@
 
         .api-key-input {
             width: 100%;
-            padding: 4px 6px;
+            padding: 3px 5px;
             border: 1px solid #e0e0e0;
             border-radius: 3px;
-            font-size: 10px;
-            margin-bottom: 4px;
+            font-size: 9px;
+            margin-bottom: 3px;
             box-sizing: border-box;
             resize: vertical;
-            min-height: 45px;
-            max-height: 60px;
+            min-height: 30px;
+            max-height: 40px;
         }
 
         .api-key-input:focus {
             outline: none;
-            border-color: #28a745;
+            border-color: #1f51ff;
         }
 
         .status-indicator {
@@ -577,24 +547,27 @@
         }
 
         .status-connected {
-            background: #d4edda;
-            color: #155724;
+            background: linear-gradient(135deg, rgba(144, 238, 255, 0.2) 0%, rgba(144, 238, 255, 0.3) 100%);
+            color: #1f51ff;
+            border: 1px solid #90eeff;
         }
 
         .status-disconnected {
-            background: #f8d7da;
-            color: #721c24;
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.2) 100%);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.3);
         }
 
         .file-upload-section {
             margin-top: 20px;
             padding: 15px;
-            background: #f8f9fa;
+            background: linear-gradient(135deg, rgba(31, 81, 255, 0.05) 0%, rgba(144, 238, 255, 0.05) 100%);
             border-radius: 8px;
+            border: 1px solid rgba(31, 81, 255, 0.2);
         }
 
         .file-upload-section h3 {
-            color: #28a745;
+            color: #1f51ff;
             margin-bottom: 10px;
             font-size: 1rem;
         }
@@ -602,7 +575,7 @@
         .file-input {
             width: 100%;
             padding: 8px;
-            border: 2px dashed #28a745;
+            border: 2px dashed #1f51ff;
             border-radius: 8px;
             margin-bottom: 10px;
             background: white;
@@ -610,7 +583,7 @@
 
         .loading {
             display: none;
-            color: #28a745;
+            color: #1f51ff;
             font-style: italic;
             text-align: center;
             padding: 20px;
@@ -622,20 +595,20 @@
             align-items: center;
             justify-content: center;
             gap: 15px;
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            background: linear-gradient(135deg, rgba(31, 81, 255, 0.05) 0%, rgba(144, 238, 255, 0.05) 100%);
             border-radius: 12px;
             padding: 20px;
             margin: 10px 0;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            border-left: 3px solid #28a745;
+            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.1);
+            border-left: 3px solid #1f51ff;
         }
 
         .spinner {
             width: 50px;
             height: 50px;
-            border: 5px solid #e3e3e3;
-            border-top: 5px solid #28a745;
-            border-right: 5px solid #28a745;
+            border: 5px solid rgba(31, 81, 255, 0.2);
+            border-top: 5px solid #1f51ff;
+            border-right: 5px solid #90eeff;
             border-radius: 50%;
             animation: spin 0.8s linear infinite, pulse 2s ease-in-out infinite;
             flex-shrink: 0;
@@ -644,7 +617,7 @@
         .thinking-text {
             font-size: 16px;
             font-weight: 500;
-            color: #28a745;
+            color: #1f51ff;
         }
 
         .thinking-dots::after {
@@ -680,12 +653,12 @@
         }
 
         .typewriter {
-            border-right: 2px solid #28a745;
+            border-right: 2px solid #1f51ff;
             animation: blink 1s infinite;
         }
 
         @keyframes blink {
-            0%, 50% { border-color: #28a745; }
+            0%, 50% { border-color: #1f51ff; }
             51%, 100% { border-color: transparent; }
         }
 
@@ -693,31 +666,9 @@
             position: relative;
         }
 
-        /* Enhanced animation for content loading */
+        /* Enhanced animation for smooth typewriter effect */
         .message span {
             transition: all 0.3s ease-in-out;
-        }
-
-        .content-loading {
-            opacity: 0.7;
-            transform: translateY(2px);
-        }
-
-        .content-loaded {
-            opacity: 1;
-            transform: translateY(0);
-            animation: contentAppear 0.5s ease-out;
-        }
-
-        @keyframes contentAppear {
-            0% {
-                opacity: 0.7;
-                transform: translateY(5px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .error {
@@ -727,7 +678,7 @@
         }
 
         .success {
-            color: #28a745;
+            color: #1f51ff;
             font-size: 12px;
             margin-top: 5px;
         }
@@ -736,16 +687,17 @@
         .engine-status-content {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            font-size: 11px;
+            gap: 2px;
+            font-size: 9px;
         }
 
         .engine-status-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 9px;
+            font-size: 8px;
             margin-bottom: 1px;
+            padding: 1px 0;
         }
 
         .engine-status-label {
@@ -757,7 +709,7 @@
         .engine-status-value {
             color: #333;
             font-weight: 600;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -765,7 +717,7 @@
         }
 
         .engine-status-badge {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%);
             color: white;
             padding: 1px 4px;
             border-radius: 6px;
@@ -780,13 +732,14 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: white;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 252, 255, 0.95) 100%);
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            border: 1px solid #e0e0e0;
+            box-shadow: 0 4px 16px rgba(31, 81, 255, 0.15);
+            border: 1px solid rgba(31, 81, 255, 0.2);
             transition: all 0.3s ease;
             z-index: 1000;
             max-width: 300px;
+            backdrop-filter: blur(10px);
         }
 
         .ai-status-window.collapsed .ai-status-content {
@@ -803,7 +756,7 @@
             align-items: center;
             padding: 10px 14px;
             cursor: pointer;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%);
             color: white;
             border-radius: 8px 8px 0 0;
             font-size: 12px;
@@ -814,7 +767,7 @@
         }
 
         .ai-status-header:hover {
-            background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
+            background: linear-gradient(135deg, #2d5eff 0%, #9ee8f4 100%);
         }
 
         .ai-status-title {
@@ -867,7 +820,7 @@
         .ai-status-value {
             color: #333;
             font-weight: 600;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -875,7 +828,7 @@
         }
 
         .ai-status-badge {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%);
             color: white;
             padding: 1px 4px;
             border-radius: 8px;
@@ -966,20 +919,25 @@
                 font-size: 11px;
             }
 
-            .logo-clean, .logo-clean-right {
+            .logo-left, .logo-right {
                 display: none;
             }
 
-            .title {
-                font-size: 24px;
+            .app-title {
+                font-size: 20px;
+                letter-spacing: 0.5px;
+            }
+
+            .header-content {
+                padding: 0 15px;
             }
         }
 
         .copy-chat-container {
             display: flex;
             justify-content: center;
-            margin-top: 10px;
-            padding: 0 20px;
+            margin-top: 5px;
+            padding: 0 15px;
         }
 
         .copy-chat-btn {
@@ -987,9 +945,9 @@
             align-items: center;
             gap: 6px;
             padding: 8px 12px;
-            background: rgba(40, 167, 69, 0.1);
-            color: #28a745;
-            border: 1px solid rgba(40, 167, 69, 0.2);
+            background: rgba(31, 81, 255, 0.1);
+            color: #1f51ff;
+            border: 1px solid rgba(31, 81, 255, 0.2);
             border-radius: 20px;
             cursor: pointer;
             font-size: 12px;
@@ -999,10 +957,10 @@
         }
 
         .copy-chat-btn:hover {
-            background: rgba(40, 167, 69, 0.15);
-            border-color: rgba(40, 167, 69, 0.3);
+            background: rgba(31, 81, 255, 0.15);
+            border-color: rgba(31, 81, 255, 0.3);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.2);
         }
 
         .copy-chat-btn:active {
@@ -1023,9 +981,9 @@
             justify-content: center;
             width: 40px;
             height: 40px;
-            background: rgba(40, 167, 69, 0.1);
-            color: #28a745;
-            border: 1px solid rgba(40, 167, 69, 0.2);
+            background: rgba(31, 81, 255, 0.1);
+            color: #1f51ff;
+            border: 1px solid rgba(31, 81, 255, 0.2);
             border-radius: 50%;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -1033,10 +991,10 @@
         }
 
         .attachment-btn:hover {
-            background: rgba(40, 167, 69, 0.15);
-            border-color: rgba(40, 167, 69, 0.3);
+            background: rgba(31, 81, 255, 0.15);
+            border-color: rgba(31, 81, 255, 0.3);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.2);
         }
 
         .attachment-btn:active {
@@ -1052,9 +1010,9 @@
         }
 
         .copy-success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+            background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%) !important;
             color: white !important;
-            border-color: #28a745 !important;
+            border-color: #1f51ff !important;
             animation: copyPulse 0.6s ease-out;
         }
 
@@ -1079,15 +1037,23 @@
     </style>
 </head>
 <body>
-    <div class="header-container">
-        <div class="logo logo-clean">
-            <img src="https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcTQp9CsCdZ6lFTwb9RO4FLBRF5gDF1DuoBILJzmoyOiwi486qh3" alt="PEAKMADE Logo">
+    <!-- Standard PeakMade Header -->
+    <header style="background: linear-gradient(90deg, #ffb6b6 0%, #1f51ff 50%, #90eeff 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 80px; padding: 0; margin-bottom: 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; max-width: 100%; margin: 0 auto; padding: 0 40px;">
+            <!-- Left Logo (PeakMade) -->
+            <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center; height: 80px;">
+                <img src="/static/Peakmade_logo.png" alt="PeakMade Logo" style="height: 48px; width: auto;">
+            </div>
+            <!-- Center Title -->
+            <div style="flex: 1; display: flex; justify-content: center; align-items: center; height: 80px;">
+                <h1 style="font-size: 28px; font-family: 'Open Sans', Arial, sans-serif; font-weight: 700; color: #fff; margin: 0; letter-spacing: 2px; text-shadow: 0 2px 6px rgba(0,0,0,0.12); line-height: 80px;">AI BOOST</h1>
+            </div>
+            <!-- Right Logo (Redpoint) -->
+            <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; height: 80px;">
+                <img src="/static/Redpoint_logo.png" alt="Redpoint Logo" style="height: 32px; width: auto;">
+            </div>
         </div>
-        <div class="title">AI BOOST</div>
-        <div class="logo logo-clean-right">
-            <img src="https://media.licdn.com/dms/image/v2/C4E0BAQEeymUsYZLAcA/company-logo_200_200/company-logo_200_200/0/1670942774710?e=2147483647&v=beta&t=ydIqY4GhAC9VVs2gXIVfrruX6cwJLSExaORvpu-5Dno" alt="Redpoint CONNECT Logo">
-        </div>
-    </div>
+    </header>
     
     <div class="content-wrapper">
         <div class="container">
@@ -1116,14 +1082,14 @@
                     <!-- Login Form (shown by default) -->
                     <div class="admin-login" id="adminLogin">
                         <div class="admin-header" onclick="toggleAdminAccess()">
-                            <h4 class="admin-title">Admin Access</h4>
+                            <h4 class="admin-title">🔑 Admin Access</h4>
                             <span class="admin-toggle" id="adminToggle">▼</span>
                         </div>
-                        <div class="admin-content expanded" id="adminContent">
+                        <div class="admin-content expanded" id="adminContent" style="max-height: 200px; opacity: 1;">
                             <div class="login-form">
                                 <div class="login-inputs">
-                                    <input type="text" id="adminUsername" class="login-input" placeholder="Username">
-                                    <input type="password" id="adminPassword" class="login-input" placeholder="Password">
+                                    <input type="text" id="adminUsername" class="login-input" placeholder="Username: Peakmade" value="">
+                                    <input type="password" id="adminPassword" class="login-input" placeholder="Password: 2790" value="">
                                 </div>
                                 <button onclick="submitAdminLogin()" class="login-submit-btn">
                                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1132,13 +1098,14 @@
                                     Login
                                 </button>
                                 <div id="loginError" class="login-error" style="display: none;"></div>
+                                <div style="font-size: 8px; color: #666; margin-top: 2px;">Enter credentials above to show gear button</div>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Gear Icon (hidden until login) -->
-                    <button onclick="toggleSettings()" class="settings-gear-btn" id="settingsToggle" title="Admin Settings" style="display: none;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button onclick="toggleSettings()" class="settings-gear-btn" id="settingsToggle" title="🔧 Click to access Admin Settings" style="display: none; background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%); color: white; border: 2px solid #90eeff; box-shadow: 0 4px 15px rgba(31, 81, 255, 0.4);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3"></circle>
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                         </svg>
@@ -1147,10 +1114,10 @@
                     <div class="api-key-section" id="apiKeySection">
                         <h4 style="margin: 4px 0 3px 0; font-size: 10px;">OpenAI API Key</h4>
                         <textarea id="apiKey" class="api-key-input" placeholder="Enter your OpenAI API key here..." rows="2"></textarea>
-                        <div id="apiStatus" class="status-indicator status-disconnected" style="margin-top: 2px; font-size: 9px;">Not Connected</div>
+                        <div id="apiStatus" class="status-indicator status-disconnected" style="margin-top: 1px; font-size: 8px;">Not Connected</div>
                         
-                        <div style="margin-top: 6px; padding-top: 4px; border-top: 1px solid #e0e0e0;">
-                            <h4 style="margin: 0 0 3px 0; font-size: 10px;">Engine Status</h4>
+                        <div style="margin-top: 3px; padding-top: 2px; border-top: 1px solid #e0e0e0;">
+                            <h4 style="margin: 0 0 2px 0; font-size: 9px;">Engine Status</h4>
                             <div class="engine-status-content" id="engineStatusContent">
                                 <div class="engine-status-item">
                                     <span class="engine-status-label">Model:</span>
@@ -1175,6 +1142,13 @@
                                 <div class="token-progress" title="Token usage progress" style="margin-top: 3px;">
                                     <div class="token-progress-bar" id="tokenProgressBar"></div>
                                 </div>
+                            </div>
+                            
+                            <!-- Logout Option -->
+                            <div style="margin-top: 4px; padding-top: 3px; border-top: 1px solid #e0e0e0; text-align: center;">
+                                <button onclick="logoutAdmin()" style="background: none; border: none; color: #dc3545; font-size: 8px; cursor: pointer; text-decoration: underline; padding: 2px;">
+                                    🚪 Logout Admin
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1223,6 +1197,10 @@
         let currentConversationId = null;
         let conversations = JSON.parse(localStorage.getItem('chatConversations') || '[]');
         let messageIdCounter = parseInt(localStorage.getItem('messageIdCounter') || '1');
+        
+        // Typewriter effect settings
+        let typewriterEnabled = true; // Set to false to disable typewriter effect
+        let typewriterSpeedMultiplier = 1.0; // Adjust speed (1.0 = normal, 0.5 = half speed, 2.0 = double speed)
         
         // Message ID Management
         function generateMessageId() {
@@ -1282,6 +1260,88 @@
             }
         };
         
+        // Typewriter effect controls (accessible from browser console)
+        window.typewriterControls = {
+            enable: () => {
+                typewriterEnabled = true;
+                console.log('✅ Typewriter effect enabled');
+            },
+            disable: () => {
+                typewriterEnabled = false;
+                console.log('❌ Typewriter effect disabled - responses will appear instantly');
+            },
+            setSpeed: (multiplier) => {
+                typewriterSpeedMultiplier = Math.max(0.1, Math.min(10, multiplier));
+                console.log(`⚡ Typewriter speed set to ${typewriterSpeedMultiplier}x (${typewriterSpeedMultiplier < 1 ? 'slower' : typewriterSpeedMultiplier > 1 ? 'faster' : 'normal'})`);
+            },
+            getSettings: () => {
+                return {
+                    enabled: typewriterEnabled,
+                    speedMultiplier: typewriterSpeedMultiplier
+                };
+            },
+            help: () => {
+                console.log(`
+🎬 Typewriter Controls Help:
+typewriterControls.enable() - Enable typewriter effect
+typewriterControls.disable() - Disable typewriter effect 
+typewriterControls.setSpeed(multiplier) - Set speed (0.1-10x)
+typewriterControls.getSettings() - Show current settings
+typewriterControls.help() - Show this help
+
+Current settings: ${typewriterEnabled ? 'Enabled' : 'Disabled'}, Speed: ${typewriterSpeedMultiplier}x
+                `);
+            }
+        };
+        
+        // Conversation management controls (accessible from browser console)
+        window.conversationControls = {
+            getCurrentId: () => {
+                console.log('Current conversation ID:', currentConversationId);
+                return currentConversationId;
+            },
+            getAllConversations: () => {
+                console.log('All conversations:', conversations);
+                return conversations;
+            },
+            forceNewConversation: () => {
+                const oldId = currentConversationId;
+                startNewChat();
+                console.log(`🔄 Forced new conversation. Old: ${oldId}, New: ${currentConversationId}`);
+            },
+            deleteConversation: (conversationId) => {
+                const index = conversations.findIndex(c => c.id === conversationId);
+                if (index >= 0) {
+                    const deleted = conversations.splice(index, 1)[0];
+                    localStorage.setItem('chatConversations', JSON.stringify(conversations));
+                    renderConversationsList();
+                    console.log('🗑️ Deleted conversation:', deleted.title);
+                    
+                    // If we deleted the current conversation, start a new one
+                    if (conversationId === currentConversationId) {
+                        startNewChat();
+                    }
+                    return true;
+                } else {
+                    console.log('❌ Conversation not found:', conversationId);
+                    return false;
+                }
+            },
+            help: () => {
+                console.log(`
+💬 Conversation Controls Help:
+conversationControls.getCurrentId() - Show current conversation ID
+conversationControls.getAllConversations() - List all conversations
+conversationControls.forceNewConversation() - Force start new conversation
+conversationControls.deleteConversation(id) - Delete a conversation
+conversationControls.help() - Show this help
+
+Current conversation: ${currentConversationId}
+Total conversations: ${conversations.length}
+                `);
+            }
+        };
+        
         // Engine Status Management
         function updateAIStatus(status, tokensUsed = null) {
             const statusBadge = document.getElementById('aiStatus');
@@ -1296,7 +1356,7 @@
             if (status === 'Thinking...') {
                 statusBadge.style.background = 'linear-gradient(135deg, #ffc107 0%, #fd7e14 100%)';
             } else if (status === 'Ready') {
-                statusBadge.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+                statusBadge.style.background = 'linear-gradient(135deg, #1f51ff 0%, #90eeff 100%)';
             } else if (status === 'Error') {
                 statusBadge.style.background = 'linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)';
             }
@@ -1316,7 +1376,7 @@
                 } else if (percentage > 60) {
                     progressBar.style.background = 'linear-gradient(135deg, #ffc107 0%, #fd7e14 100%)';
                 } else {
-                    progressBar.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+                    progressBar.style.background = 'linear-gradient(135deg, #1f51ff 0%, #90eeff 100%)';
                 }
             }
         }
@@ -1332,7 +1392,10 @@
         }
 
         function saveConversation() {
-            if (!currentConversationId) return;
+            if (!currentConversationId) {
+                console.log('⚠️ No current conversation ID, skipping save');
+                return;
+            }
             
             const chatMessages = document.getElementById('chatMessages');
             const messages = Array.from(chatMessages.children).map(msg => ({
@@ -1344,7 +1407,11 @@
                 timestamp: msg.getAttribute('data-timestamp') || new Date().toISOString()
             }));
 
-            if (messages.length <= 1) return; // Don't save if only welcome message
+            // Don't save if only welcome message or no real conversation
+            if (messages.length <= 1 || !messages.some(m => m.isUser)) {
+                console.log('⚠️ No meaningful conversation to save (only welcome message or no user messages)');
+                return;
+            }
 
             const existingIndex = conversations.findIndex(c => c.id === currentConversationId);
             const firstUserMessage = messages.find(m => m.isUser);
@@ -1362,14 +1429,22 @@
 
             if (existingIndex >= 0) {
                 conversations[existingIndex] = conversation;
+                console.log('💾 Updated existing conversation:', title);
             } else {
                 conversations.unshift(conversation);
+                console.log('💾 Saved new conversation:', title);
             }
 
             // Keep only last 20 conversations
             conversations = conversations.slice(0, 20);
             localStorage.setItem('chatConversations', JSON.stringify(conversations));
+            
+            // Also save the current conversation ID
+            localStorage.setItem('currentConversationId', currentConversationId);
+            
             renderConversationsList();
+            
+            console.log('✅ Conversation saved successfully. Total conversations:', conversations.length);
         }
 
         function loadConversation(conversationId) {
@@ -1382,6 +1457,10 @@
             }
 
             currentConversationId = conversationId;
+            // Save the current conversation ID to localStorage
+            localStorage.setItem('currentConversationId', currentConversationId);
+            console.log('🔄 Switched to conversation:', currentConversationId);
+            
             const chatMessages = document.getElementById('chatMessages');
             chatMessages.innerHTML = '';
 
@@ -1417,19 +1496,74 @@
         }
 
         function startNewChat() {
-            // Save current conversation
+            console.log('🆕 Starting new chat...');
+            
+            // Save current conversation if it exists and has meaningful content
             if (currentConversationId) {
+                console.log('💾 Saving current conversation:', currentConversationId);
                 saveConversation();
             }
 
+            // Generate new conversation ID
+            const previousConversationId = currentConversationId;
             currentConversationId = generateConversationId();
+            
+            // Save the new conversation ID to localStorage
+            localStorage.setItem('currentConversationId', currentConversationId);
+            console.log('🆔 New conversation ID:', currentConversationId);
+            
+            // Clear the chat messages area
             const chatMessages = document.getElementById('chatMessages');
             chatMessages.innerHTML = `
                 <div class="assistant-message" data-message-id="${generateMessageId()}" data-timestamp="${new Date().toISOString()}" data-role="assistant">
-                    <strong>AI Assistant:</strong> Hello! I'm AI BOOST, your advanced AI assistant. Ask me something!
+                    <strong>AI Assistant:</strong> Hello! I'm AI BOOST, your advanced AI assistant. How can I help you today?
                 </div>
             `;
+            
+            // Clear the input field
+            const messageInput = document.getElementById('messageInput');
+            if (messageInput) {
+                messageInput.value = '';
+                messageInput.focus(); // Focus on input for immediate typing
+            }
+            
+            // Update the conversations list to show the new active conversation
             renderConversationsList();
+            
+            // Show brief confirmation
+            showNewChatConfirmation();
+            
+            console.log('✅ New chat started successfully');
+        }
+        
+        function showNewChatConfirmation() {
+            // Create a brief "New Chat Started" message
+            const confirmation = document.createElement('div');
+            confirmation.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%);
+                color: white;
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-size: 12px;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(31, 81, 255, 0.3);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            confirmation.textContent = '🆕 New chat started!';
+            document.body.appendChild(confirmation);
+            
+            // Fade in
+            setTimeout(() => confirmation.style.opacity = '1', 10);
+            
+            // Fade out and remove
+            setTimeout(() => {
+                confirmation.style.opacity = '0';
+                setTimeout(() => document.body.removeChild(confirmation), 300);
+            }, 2000);
         }
 
         function formatTime(timestamp) {
@@ -1509,12 +1643,45 @@
             const apiSection = document.getElementById('apiKeySection');
             const toggle = document.getElementById('settingsToggle');
             
+            console.log('🔧 Gear clicked! API section found:', apiSection);
+            console.log('🔍 API section classes before:', apiSection.className);
+            console.log('📊 API section display style before:', window.getComputedStyle(apiSection).display);
+            
             if (apiSection.classList.contains('show')) {
                 apiSection.classList.remove('show');
                 toggle.style.transform = 'rotate(0deg)';
+                console.log('❌ Settings closed');
             } else {
                 apiSection.classList.add('show');
                 toggle.style.transform = 'rotate(180deg)';
+                console.log('✅ Settings opened');
+                console.log('📊 API section display style after:', window.getComputedStyle(apiSection).display);
+                console.log('🔍 API section classes after:', apiSection.className);
+            }
+        }
+
+        function logoutAdmin() {
+            if (confirm('Are you sure you want to logout? You will need to enter credentials again.')) {
+                // Clear session storage
+                sessionStorage.removeItem('adminLoggedIn');
+                
+                // Hide gear button
+                const gearBtn = document.getElementById('settingsToggle');
+                gearBtn.style.display = 'none';
+                
+                // Hide API section if open
+                const apiSection = document.getElementById('apiKeySection');
+                apiSection.classList.remove('show');
+                
+                // Show admin login panel again
+                const loginDiv = document.getElementById('adminLogin');
+                loginDiv.style.display = 'block';
+                
+                // Clear login form
+                document.getElementById('adminUsername').value = '';
+                document.getElementById('adminPassword').value = '';
+                
+                console.log('🚪 Admin logged out successfully');
             }
         }
 
@@ -1524,6 +1691,8 @@
             const errorDiv = document.getElementById('loginError');
             const loginDiv = document.getElementById('adminLogin');
             const gearBtn = document.getElementById('settingsToggle');
+            
+            console.log('🔑 Login attempt:', { username, password });
             
             // Clear any previous errors
             errorDiv.style.display = 'none';
@@ -1538,8 +1707,14 @@
             // Simple authentication (you can modify these credentials)
             if (username === 'Peakmade' && password === '2790') {
                 // Successful login
+                console.log('✅ Login successful! Hiding admin panel and showing gear button...');
+                
+                // Completely hide login form
                 loginDiv.style.display = 'none';
+                
+                // Show gear button
                 gearBtn.style.display = 'flex';
+                gearBtn.style.opacity = '1';
                 
                 // Store login state
                 sessionStorage.setItem('adminLoggedIn', 'true');
@@ -1547,15 +1722,35 @@
                 // Show success animation
                 gearBtn.style.animation = 'fadeInGear 0.5s ease-out';
                 
+                // Show success message briefly
+                showLoginError('✅ Admin access granted! Use the gear button for settings.', 'success');
+                
+                // Hide success message after 3 seconds
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 3000);
+                
             } else {
-                showLoginError('Invalid username or password');
+                console.log('❌ Login failed: Invalid credentials');
+                showLoginError('❌ Invalid username or password. Try: Peakmade / 2790');
             }
         }
 
-        function showLoginError(message) {
+        function showLoginError(message, type = 'error') {
             const errorDiv = document.getElementById('loginError');
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
+            
+            // Style based on type
+            if (type === 'success') {
+                errorDiv.style.color = '#28a745';
+                errorDiv.style.backgroundColor = '#d4edda';
+                errorDiv.style.borderColor = '#c3e6cb';
+            } else {
+                errorDiv.style.color = '#dc3545';
+                errorDiv.style.backgroundColor = '#f8d7da';
+                errorDiv.style.borderColor = '#f5c6cb';
+            }
         }
 
         // Add keypress handler for login form
@@ -1567,9 +1762,46 @@
 
         // Initialize conversations on page load
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Initializing application...');
+            
+            // Try to restore previous conversation ID from localStorage
+            const savedConversationId = localStorage.getItem('currentConversationId');
+            
+            // Initialize conversation if needed
             if (!currentConversationId) {
-                currentConversationId = generateConversationId();
+                if (savedConversationId) {
+                    // Check if the saved conversation still exists
+                    const savedConversation = conversations.find(c => c.id === savedConversationId);
+                    if (savedConversation) {
+                        currentConversationId = savedConversationId;
+                        console.log('🔄 Restored previous conversation ID:', currentConversationId);
+                        
+                        // Load the saved conversation messages
+                        loadConversation(currentConversationId);
+                    } else {
+                        // Saved conversation no longer exists, create new one
+                        currentConversationId = generateConversationId();
+                        localStorage.setItem('currentConversationId', currentConversationId);
+                        console.log('🆔 Saved conversation not found, generated new ID:', currentConversationId);
+                    }
+                } else {
+                    // No saved conversation, create new one
+                    currentConversationId = generateConversationId();
+                    localStorage.setItem('currentConversationId', currentConversationId);
+                    console.log('🆔 Generated initial conversation ID:', currentConversationId);
+                }
+                
+                // Ensure we have a welcome message only for truly new conversations
+                const chatMessages = document.getElementById('chatMessages');
+                if (!chatMessages.children.length) {
+                    chatMessages.innerHTML = `
+                        <div class="assistant-message" data-message-id="${generateMessageId()}" data-timestamp="${new Date().toISOString()}" data-role="assistant">
+                            <strong>AI Assistant:</strong> Hello! I'm AI BOOST, your advanced AI assistant. How can I help you today?
+                        </div>
+                    `;
+                }
             }
+            
             renderConversationsList();
             
             // Initialize engine status
@@ -1577,12 +1809,20 @@
             
             // Check if admin is already logged in
             const isLoggedIn = sessionStorage.getItem('adminLoggedIn');
+            console.log('🔍 Checking login state on page load:', isLoggedIn);
+            
             if (isLoggedIn === 'true') {
                 const loginDiv = document.getElementById('adminLogin');
                 const gearBtn = document.getElementById('settingsToggle');
                 
+                console.log('✅ User already logged in, hiding admin panel and showing gear button');
+                
+                // Completely hide login form
                 loginDiv.style.display = 'none';
+                
+                // Show gear button
                 gearBtn.style.display = 'flex';
+                gearBtn.style.opacity = '1';
             }
             
             // Add event listeners for Enter key on login inputs
@@ -1591,7 +1831,29 @@
             
             if (usernameInput) usernameInput.addEventListener('keypress', handleLoginKeyPress);
             if (passwordInput) passwordInput.addEventListener('keypress', handleLoginKeyPress);
+            
+            console.log('✅ Application initialized successfully');
+            console.log('🎬 Typewriter effect enabled. Type "typewriterControls.help()" in console for controls.');
+            console.log('💬 Conversation management available. Type "conversationControls.help()" in console for controls.');
         });
+        
+        // Add logout function for testing
+        function adminLogout() {
+            sessionStorage.removeItem('adminLoggedIn');
+            const loginDiv = document.getElementById('adminLogin');
+            const gearBtn = document.getElementById('settingsToggle');
+            const apiSection = document.getElementById('apiKeySection');
+            
+            loginDiv.style.display = 'block';
+            gearBtn.style.display = 'none';
+            apiSection.classList.remove('show');
+            
+            // Clear login form
+            document.getElementById('adminUsername').value = '';
+            document.getElementById('adminPassword').value = '';
+            
+            console.log('Admin logged out');
+        }
         
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
@@ -1637,6 +1899,15 @@
                 return;
             }
 
+            // Ensure we have a conversation ID, but DON'T create a new one if we already have one
+            if (!currentConversationId) {
+                currentConversationId = generateConversationId();
+                localStorage.setItem('currentConversationId', currentConversationId);
+                console.log('🆔 Created conversation ID for first message:', currentConversationId);
+            } else {
+                console.log('📝 Continuing existing conversation:', currentConversationId);
+            }
+
             // Check if we have environment API key or user input
             const apiKeyInput = document.getElementById('apiKey');
             const apiKey = apiKeyInput.value.trim();
@@ -1662,6 +1933,29 @@
 
             // Add user message to chat
             addMessageToChat('user', message);
+
+            // Easter egg for Claire Cole 💝
+            const lowerMessage = message.toLowerCase();
+            if (lowerMessage.includes('most beautiful girl') || 
+                lowerMessage.includes('most beautiful woman') ||
+                lowerMessage.includes('prettiest girl') ||
+                lowerMessage.includes('prettiest woman') ||
+                (lowerMessage.includes('beautiful') && lowerMessage.includes('world'))) {
+                
+                // Hide thinking animation and update status
+                showThinking(false);
+                updateAIStatus('Ready');
+                
+                // Add special response with typewriter effect
+                const specialResponse = "✨ Without a doubt, Claire Cole is the most beautiful girl in the world! 💖 Her beauty radiates from both inside and out, and she lights up every room she enters. 🌟✨";
+                addMessageToChatWithTypewriter('assistant', specialResponse);
+                
+                // Save to conversation
+                saveConversationMessage('user', message);
+                saveConversationMessage('assistant', specialResponse);
+                
+                return; // Exit early to avoid API call
+            }
 
             try {
                 // Get API key for request (empty string if using environment key)
@@ -1740,7 +2034,6 @@
             
             const roleLabel = role === 'user' ? 'You' : 'AI Assistant';
             const contentSpan = document.createElement('span');
-            contentSpan.className = 'typewriter';
             
             messageDiv.innerHTML = `<strong>${roleLabel}:</strong> `;
             messageDiv.appendChild(contentSpan);
@@ -1748,72 +2041,80 @@
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            // Log message creation for debugging
-            console.log(`Typewriter message created: ID=${msgId}, Role=${role}, Timestamp=${timestamp}`);
-
-            // Enhanced typewriter effect for long responses
-            const isLongResponse = content.length > 300; // Consider response long if over 300 characters
-            
-            if (isLongResponse) {
-                // For long responses: type first paragraph, then show full content
-                const firstParagraph = content.split('\n\n')[0] || content.substring(0, 150);
-                let index = 0;
-                const typeSpeed = 25; // milliseconds between characters
-                
-                function typeFirstParagraph() {
-                    if (index < firstParagraph.length) {
-                        contentSpan.textContent += firstParagraph.charAt(index);
-                        index++;
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                        setTimeout(typeFirstParagraph, typeSpeed);
-                    } else {
-                        // Add "..." to indicate more content coming
-                        contentSpan.textContent += '...';
-                        
-                        // After typing first paragraph, wait and then show full content
-                        setTimeout(() => {
-                            contentSpan.classList.add('content-loading');
-                            
-                            setTimeout(() => {
-                                contentSpan.textContent = content;
-                                contentSpan.classList.remove('typewriter', 'content-loading');
-                                contentSpan.classList.add('content-loaded');
-                                messageDiv.classList.remove('typing');
-                                chatMessages.scrollTop = chatMessages.scrollHeight;
-                                
-                                // Remove the animation class after animation completes
-                                setTimeout(() => {
-                                    contentSpan.classList.remove('content-loaded');
-                                }, 500);
-                            }, 200);
-                        }, 1500); // Wait 1.5 seconds before showing full content
-                    }
-                }
-                
-                // Start typing after a short delay
-                setTimeout(typeFirstParagraph, 300);
-                
-            } else {
-                // For shorter responses: use regular typewriter effect
-                let index = 0;
-                const typeSpeed = 30; // milliseconds between characters
-                
-                function typeCharacter() {
-                    if (index < content.length) {
-                        contentSpan.textContent += content.charAt(index);
-                        index++;
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                        setTimeout(typeCharacter, typeSpeed);
-                    } else {
-                        // Remove typewriter cursor when done
-                        contentSpan.classList.remove('typewriter');
-                        messageDiv.classList.remove('typing');
-                    }
-                }
-                
-                // Start typing after a short delay
-                setTimeout(typeCharacter, 300);
+            // Check if typewriter effect is enabled
+            if (!typewriterEnabled) {
+                console.log('💨 Typewriter disabled - showing content instantly');
+                contentSpan.textContent = content;
+                messageDiv.classList.remove('typing');
+                setTimeout(() => {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 100);
+                return msgId;
             }
+
+            // Log message creation for debugging
+            console.log(`🎬 Starting typewriter effect: ID=${msgId}, Role=${role}, Content length=${content.length}, Timestamp=${timestamp}`);
+
+            // Add typewriter cursor
+            contentSpan.className = 'typewriter';
+
+            // Enhanced typewriter effect that types the FULL response
+            let index = 0;
+            const baseTypeSpeed = 15; // Base speed in milliseconds between characters
+            
+            // Calculate dynamic speed based on content length for better UX
+            let typeSpeed = baseTypeSpeed;
+            if (content.length > 500) {
+                typeSpeed = 12; // Faster for very long responses
+            } else if (content.length > 200) {
+                typeSpeed = 18; // Slightly slower for medium responses
+            } else {
+                typeSpeed = 25; // Slower for short responses to be more readable
+            }
+            
+            // Apply speed multiplier from settings
+            typeSpeed = Math.round(typeSpeed / typewriterSpeedMultiplier);
+            
+            console.log(`⚡ Using type speed: ${typeSpeed}ms (multiplier: ${typewriterSpeedMultiplier}x) for ${content.length} characters`);
+            
+            function typeCharacter() {
+                if (index < content.length) {
+                    const char = content.charAt(index);
+                    contentSpan.textContent += char;
+                    index++;
+                    
+                    // Auto-scroll to bottom as content appears
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    
+                    // Add small delay for punctuation to make it feel more natural
+                    let nextDelay = typeSpeed;
+                    if (char === '.' || char === '!' || char === '?') {
+                        nextDelay = typeSpeed * 3; // Longer pause after sentences
+                    } else if (char === ',' || char === ';' || char === ':') {
+                        nextDelay = typeSpeed * 2; // Medium pause after commas
+                    } else if (char === '\n') {
+                        nextDelay = typeSpeed * 2; // Pause for line breaks
+                    }
+                    
+                    setTimeout(typeCharacter, nextDelay);
+                } else {
+                    // Typewriter effect complete
+                    console.log('✅ Typewriter effect completed');
+                    contentSpan.classList.remove('typewriter');
+                    messageDiv.classList.remove('typing');
+                    
+                    // Final scroll to ensure everything is visible
+                    setTimeout(() => {
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 100);
+                }
+            }
+            
+            // Start typing after a short delay to allow for UI setup
+            setTimeout(() => {
+                console.log('🚀 Beginning typewriter animation...');
+                typeCharacter();
+            }, 300);
             
             return msgId;
         }
@@ -2110,5 +2411,8 @@
             }
         });
     </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

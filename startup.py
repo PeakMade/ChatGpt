@@ -1,5 +1,6 @@
 """
 Azure App Service startup script for Flask AI BOOST App
+Main application: app.py
 """
 import os
 import sys
