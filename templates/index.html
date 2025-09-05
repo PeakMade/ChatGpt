@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI BOOST</title>
+    <title>AI Boost</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -17,25 +17,122 @@
             box-sizing: border-box;
         }
 
+        /* Hide scrollbars while keeping scrollability */
+        * {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Internet Explorer 10+ */
+        }
+        *::-webkit-scrollbar {
+            width: 0px;
+            background: transparent; /* Chrome/Safari/Webkit */
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             background: linear-gradient(135deg, #e8f4fd 0%, #d1e9f6 50%, #bbdff1 100%);
-            min-height: 100vh;
+            height: 100vh;
             padding: 0;
             margin: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         .content-wrapper {
-            padding: 10px;
+            padding: 5px;
+            width: 100%;
+            max-width: 1400px;
+            display: flex;
+            justify-content: center;
+            flex: 1;
+            margin: 0 auto;
         }
 
         .container {
+            width: 100%;
             max-width: 1200px;
             margin: 0 auto;
             display: grid;
             grid-template-columns: 300px 1fr;
-            gap: 15px;
-            height: calc(100vh - 80px);
+            gap: 10px;
+            height: calc(100vh - 50px);
+            justify-content: center;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .container {
+                max-width: 95%;
+                grid-template-columns: 280px 1fr;
+                gap: 10px;
+            }
+            
+            .chat-input-container {
+                padding: 12px;
+            }
+            
+            .input-group {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                max-width: 100%;
+                gap: 10px;
+                height: auto;
+                min-height: calc(100vh - 20px);
+            }
+            
+            .sidebar {
+                order: 2;
+                max-height: 400px;
+            }
+            
+            .main-chat {
+                order: 1;
+            }
+            
+            .chat-input-container {
+                padding: 10px;
+            }
+            
+            .input-group {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .chat-input {
+                width: 100%;
+            }
+            
+            .input-actions {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .content-wrapper {
+                padding: 5px;
+            }
+            
+            .container {
+                gap: 5px;
+            }
+            
+            .chat-input-container {
+                padding: 8px;
+            }
+            
+            .message {
+                max-width: 95%;
+            }
+            
+            .chat-input {
+                font-size: 16px; /* Prevent zoom on iOS */
+            }
         }
 
         .sidebar {
@@ -47,16 +144,17 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            height: calc(100vh - 50px);
         }
 
         .new-chat-section {
-            padding: 15px;
+            padding: 8px;
             border-bottom: 1px solid #e0e0e0;
             background: linear-gradient(135deg, #6a5acd 0%, #87ceeb 100%);
         }
 
         .chat-history-header {
-            padding: 15px 20px 10px 20px;
+            padding: 8px 12px 6px 12px;
             border-bottom: 1px solid #e0e0e0;
             background: #f8f9fa;
             display: flex;
@@ -87,14 +185,14 @@
         .conversations-list {
             flex: 1;
             overflow-y: auto;
-            padding: 10px;
+            padding: 6px;
             transition: max-height 0.3s ease, opacity 0.3s ease;
         }
 
         .conversations-list.collapsed {
             max-height: 0;
             opacity: 0;
-            padding: 0 15px;
+            padding: 0 8px;
             overflow: hidden;
         }
 
@@ -385,8 +483,11 @@
         }
 
         .settings-gear-btn {
-            width: 32px;
-            height: 32px;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 48px;
+            height: 48px;
             padding: 6px;
             background: rgba(31, 81, 255, 0.1);
             border: 1px solid rgba(31, 81, 255, 0.2);
@@ -397,17 +498,18 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 1000;
         }
 
         .settings-gear-btn:hover {
-            background: rgba(31, 81, 255, 0.15);
-            border-color: rgba(31, 81, 255, 0.3);
-            transform: rotate(45deg) scale(1.1);
-            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.2);
+            background: linear-gradient(135deg, #2c5dff 0%, #a5f2ff 100%) !important;
+            border-color: #a5f2ff !important;
+            transform: rotate(90deg) scale(1.1) !important;
+            box-shadow: 0 6px 25px rgba(31, 81, 255, 0.6) !important;
         }
 
         .settings-gear-btn:active {
-            transform: rotate(45deg) scale(1);
+            transform: rotate(90deg) scale(0.95) !important;
         }
 
         @keyframes fadeInGear {
@@ -442,16 +544,22 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            width: 100%;
+            margin: 0 auto;
+            position: relative;
+            height: calc(100vh - 50px);
         }
 
         .chat-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 15px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             background: linear-gradient(180deg, rgba(144, 223, 239, 0.02) 0%, rgba(31, 81, 255, 0.02) 100%);
+            align-items: stretch;
+            min-height: 0;
         }
 
         .message {
@@ -481,9 +589,14 @@
         }
 
         .chat-input-container {
-            padding: 15px;
+            padding: 8px 15px;
             border-top: 1px solid rgba(31, 81, 255, 0.1);
             background: linear-gradient(145deg, #f8fcff 0%, #ffffff 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            height: 60px;
         }
 
         .input-group {
@@ -491,6 +604,9 @@
             gap: 10px;
             align-items: center;
             position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
         }
 
         .input-actions {
@@ -1099,19 +1215,19 @@
 </head>
 <body>
     <!-- Standard PeakMade Header -->
-    <header style="background: linear-gradient(90deg, #ffb6b6 0%, #1f51ff 50%, #90eeff 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 80px; padding: 0; margin-bottom: 0;">
+    <header style="background: linear-gradient(90deg, #ffb6b6 0%, #1f51ff 50%, #90eeff 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 50px; padding: 0; margin-bottom: 0; flex-shrink: 0;">
         <div style="display: flex; align-items: center; justify-content: space-between; max-width: 100%; margin: 0 auto; padding: 0 40px;">
             <!-- Left Logo (Onyx) -->
-            <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center; height: 80px;">
-                <img src="/static/onyx_logo_white_transparent (4).png" alt="Onyx CenterSource Logo" style="height: 48px; width: auto;">
+            <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center; height: 50px;">
+                <img src="/static/onyx_logo_white_transparent (4).png" alt="Onyx CenterSource Logo" style="height: 32px; width: auto;">
             </div>
             <!-- Center Title -->
-            <div style="flex: 1; display: flex; justify-content: center; align-items: center; height: 80px;">
-                <h1 style="font-size: 28px; font-family: 'Open Sans', Arial, sans-serif; font-weight: 700; color: #fff; margin: 0; letter-spacing: 2px; text-shadow: 0 2px 6px rgba(0,0,0,0.12); line-height: 80px;">AI BOOST</h1>
+            <div style="flex: 1; display: flex; justify-content: center; align-items: center; height: 50px;">
+                <h1 style="font-size: 22px; font-family: 'Open Sans', Arial, sans-serif; font-weight: 700; color: #fff; margin: 0; letter-spacing: 2px; text-shadow: 0 2px 6px rgba(0,0,0,0.12); line-height: 50px;">AI Boost</h1>
             </div>
             <!-- Right Logo (Redpoint) -->
-            <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; height: 80px;">
-                <img src="/static/Redpoint_logo.png" alt="Redpoint Logo" style="height: 32px; width: auto;">
+            <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; height: 50px;">
+                <img src="/static/Redpoint_logo.png" alt="Redpoint Logo" style="height: 24px; width: auto;">
             </div>
         </div>
     </header>
@@ -1121,12 +1237,6 @@
             <div class="sidebar">
                 <div class="new-chat-section">
                     <div class="button-row">
-                        <button onclick="clearCurrentChat()" class="clear-chat-btn" title="Clear current conversation">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
-                            </svg>
-                            Clear Chat
-                        </button>
                         <button onclick="startNewChat()" class="new-chat-btn">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 5v14m-7-7h14"></path>
@@ -1142,12 +1252,14 @@
                 </div>
                 
                 <!-- Simple conversation search -->
-                <div class="conversation-controls" style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <div class="conversation-controls" style="padding: 4px; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     <input type="text" 
                            id="conversationSearch" 
-                           placeholder="🔍 Search conversations..." 
-                           style="width: 100%; padding: 6px 8px; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; background: rgba(255,255,255,0.1); color: #2c3e50; font-size: 12px; box-sizing: border-box; font-weight: 500;"
-                           onkeyup="handleConversationSearch(event)">
+                           placeholder="Search conversations..." 
+                           style="width: 100%; padding: 6px 8px; border: 2px solid; border-image: linear-gradient(135deg, #6a5acd, #87ceeb) 1; border-radius: 6px; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%); color: #fff; font-size: 12px; box-sizing: border-box; font-weight: 500; transition: all 0.3s ease; backdrop-filter: blur(10px);"
+                           onkeyup="handleConversationSearch(event)"
+                           onfocus="this.style.borderImage='linear-gradient(135deg, #90eeff, #1f51ff) 1'; this.style.boxShadow='0 0 10px rgba(144,238,255,0.3)'"
+                           onblur="this.style.borderImage='linear-gradient(135deg, #6a5acd, #87ceeb) 1'; this.style.boxShadow='none'">
                 </div>
                 
                 <div class="conversations-list expanded" id="conversationsList">
@@ -1156,12 +1268,29 @@
                     </div>
                 </div>
                 
+                <!-- Gear Icon in white box area -->
+                <div style="padding: 8px; text-align: center; background: rgba(255,255,255,0.1); border-top: 1px solid rgba(255,255,255,0.1);">
+                    <button onclick="toggleSettings()" id="settingsToggle" title="🔧 Click to access Admin Settings" 
+                            style="display: none; background: none; border: none; cursor: pointer; padding: 0;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" 
+                             style="color: #90eeff; transition: transform 0.3s ease;" 
+                             onmouseenter="this.style.transform='rotate(90deg)'" 
+                             onmouseleave="this.style.transform='rotate(0deg)'"
+                             onclick="this.style.transform='rotate(360deg)'; setTimeout(() => this.style.transform='rotate(0deg)', 300)">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
+                </div>
+                
                 <div class="settings-section">
                     <!-- Login Form (shown by default) -->
                     <div class="admin-login" id="adminLogin">
-                        <div class="admin-header" onclick="toggleAdminAccess()">
-                            <h4 class="admin-title">Admin Access</h4>
-                            <span class="admin-toggle" id="adminToggle">▼</span>
+                        <div class="admin-header" onclick="toggleAdminAccess()" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center;">
+                                <h4 class="admin-title">Admin Access</h4>
+                                <span class="admin-toggle" id="adminToggle" style="margin-left: 10px;">▼</span>
+                            </div>
                         </div>
                         <div class="admin-content expanded" id="adminContent" style="max-height: 200px; opacity: 1;">
                             <div class="login-form">
@@ -1180,14 +1309,6 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Gear Icon (hidden until login) -->
-                    <button onclick="toggleSettings()" class="settings-gear-btn" id="settingsToggle" title="🔧 Click to access Admin Settings" style="display: none; background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%); color: white; border: 2px solid #90eeff; box-shadow: 0 4px 15px rgba(31, 81, 255, 0.4);">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3"></circle>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                        </svg>
-                    </button>
                     
                     <div class="api-key-section" id="apiKeySection">
                         <h4 style="margin: 4px 0 3px 0; font-size: 10px;">OpenAI API Key</h4>
@@ -1249,7 +1370,7 @@
 
             <div id="chatMessages" class="chat-messages">
                 <div class="assistant-message">
-                    <strong>AI Assistant:</strong> Hello! I'm AI BOOST, your advanced AI assistant. Ask me something!
+                    <strong>AI Assistant:</strong> Hello! I'm AI Boost, your advanced AI assistant. Ask me something!
                 </div>
             </div>
 
@@ -1525,8 +1646,8 @@ Total conversations: ${conversations.length}
                 console.log('💾 Saved new conversation:', title);
             }
 
-            // Keep only last 20 conversations
-            conversations = conversations.slice(0, 20);
+            // Keep only last 50 conversations
+            conversations = conversations.slice(0, 50);
             localStorage.setItem('chatConversations', JSON.stringify(conversations));
             
             // Also save the current conversation ID
@@ -1571,9 +1692,29 @@ Total conversations: ${conversations.length}
                         chatMessages.appendChild(messageEl);
                     });
 
+                    // CRITICAL: Sync localStorage conversation with backend session
+                    syncConversationWithSession(conversation.messages);
+
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                     renderConversationsList();
                 }
+            });
+        }
+
+        function syncConversationWithSession(messages) {
+            if (!messages || messages.length === 0) return;
+            
+            // Send conversation messages to backend to set up session context
+            fetch('/set-conversation-context', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    messages: messages
+                })
+            }).catch(error => {
+                console.error('Error syncing conversation with session:', error);
             });
         }
 
@@ -1835,7 +1976,7 @@ Total conversations: ${conversations.length}
             const chatMessages = document.getElementById('chatMessages');
             chatMessages.innerHTML = `
                 <div class="assistant-message" data-message-id="${generateMessageId()}" data-timestamp="${new Date().toISOString()}" data-role="assistant">
-                    <strong>AI Assistant:</strong> Hello! I'm AI BOOST, your advanced AI assistant. How can I help you today?
+                    <strong>AI Assistant:</strong> Hello! I'm AI Boost, your advanced AI assistant. How can I help you today?
                 </div>
             `;
             
@@ -1897,7 +2038,7 @@ Total conversations: ${conversations.length}
             const chatMessages = document.getElementById('chatMessages');
             chatMessages.innerHTML = `
                 <div class="assistant-message" data-message-id="${generateMessageId()}" data-timestamp="${new Date().toISOString()}" data-role="assistant">
-                    <strong>AI Assistant:</strong> Chat cleared! I'm AI BOOST, your advanced AI assistant. How can I help you today?
+                    <strong>AI Assistant:</strong> Chat cleared! I'm AI Boost, your advanced AI assistant. How can I help you today?
                 </div>
             `;
             
@@ -2040,6 +2181,34 @@ Total conversations: ${conversations.length}
             const apiSection = document.getElementById('apiKeySection');
             const toggle = document.getElementById('settingsToggle');
             
+            console.log('🔧 Gear clicked! Toggling settings panel...');
+            console.log('🔍 API section found:', apiSection);
+            console.log('📊 API section classes before:', apiSection.className);
+            
+            if (apiSection.classList.contains('show')) {
+                // Hide the API section
+                apiSection.classList.remove('show');
+                apiSection.style.maxHeight = '0';
+                apiSection.style.opacity = '0';
+                toggle.style.transform = 'rotate(0deg)';
+                console.log('❌ Settings closed');
+            } else {
+                // Show the API section
+                apiSection.classList.add('show');
+                apiSection.style.maxHeight = '400px'; // Adjust as needed
+                apiSection.style.opacity = '1';
+                apiSection.style.display = 'block';
+                toggle.style.transform = 'rotate(180deg)';
+                console.log('✅ Settings opened');
+            }
+            
+            console.log('📊 API section classes after:', apiSection.className);
+        }
+
+        function toggleSettings() {
+            const apiSection = document.getElementById('apiKeySection');
+            const toggle = document.getElementById('settingsToggle');
+            
             console.log('🔧 Gear clicked! API section found:', apiSection);
             console.log('🔍 API section classes before:', apiSection.className);
             console.log('📊 API section display style before:', window.getComputedStyle(apiSection).display);
@@ -2070,9 +2239,19 @@ Total conversations: ${conversations.length}
                 const apiSection = document.getElementById('apiKeySection');
                 apiSection.classList.remove('show');
                 
-                // Show admin login panel again
-                const loginDiv = document.getElementById('adminLogin');
-                loginDiv.style.display = 'block';
+                // Restore admin login panel
+                const adminContent = document.getElementById('adminContent');
+                const adminTitle = document.querySelector('.admin-title');
+                const adminToggle = document.getElementById('adminToggle');
+                
+                // Show the login form content
+                adminContent.style.display = 'block';
+                
+                // Restore admin header text
+                adminTitle.textContent = 'Admin Access';
+                
+                // Show the toggle arrow
+                adminToggle.style.display = 'inline';
                 
                 // Clear login form
                 document.getElementById('adminUsername').value = '';
@@ -2104,13 +2283,22 @@ Total conversations: ${conversations.length}
             // Simple authentication (you can modify these credentials)
             if (username === 'Peakmade' && password === '2790') {
                 // Successful login
-                console.log('✅ Login successful! Hiding admin panel and showing gear button...');
+                console.log('✅ Login successful! Hiding login form and showing gear button...');
                 
-                // Completely hide login form
-                loginDiv.style.display = 'none';
+                // Hide only the login form content, not the entire admin section
+                const adminContent = document.getElementById('adminContent');
+                adminContent.style.display = 'none';
                 
-                // Show gear button
-                gearBtn.style.display = 'flex';
+                // Update admin header text to show logged in status
+                const adminTitle = document.querySelector('.admin-title');
+                adminTitle.textContent = 'Admin Panel';
+                
+                // Hide the toggle arrow since we're hiding the content
+                const adminToggle = document.getElementById('adminToggle');
+                adminToggle.style.display = 'none';
+                
+                // Show gear button in admin panel
+                gearBtn.style.display = 'block';
                 gearBtn.style.opacity = '1';
                 
                 // Store login state
@@ -2193,7 +2381,7 @@ Total conversations: ${conversations.length}
                 if (!chatMessages.children.length) {
                     chatMessages.innerHTML = `
                         <div class="assistant-message" data-message-id="${generateMessageId()}" data-timestamp="${new Date().toISOString()}" data-role="assistant">
-                            <strong>AI Assistant:</strong> Hello! I'm AI BOOST, your advanced AI assistant. How can I help you today?
+                            <strong>AI Assistant:</strong> Hello! I'm AI Boost, your advanced AI assistant. How can I help you today?
                         </div>
                     `;
                 }
@@ -2211,14 +2399,23 @@ Total conversations: ${conversations.length}
             if (isLoggedIn === 'true') {
                 const loginDiv = document.getElementById('adminLogin');
                 const gearBtn = document.getElementById('settingsToggle');
+                const adminContent = document.getElementById('adminContent');
+                const adminTitle = document.querySelector('.admin-title');
+                const adminToggle = document.getElementById('adminToggle');
                 
-                console.log('✅ User already logged in, hiding admin panel and showing gear button');
+                console.log('✅ User already logged in, updating UI and showing gear button');
                 
-                // Completely hide login form
-                loginDiv.style.display = 'none';
+                // Hide only the login form content, not the entire admin section
+                adminContent.style.display = 'none';
                 
-                // Show gear button
-                gearBtn.style.display = 'flex';
+                // Update admin header text to show logged in status
+                adminTitle.textContent = 'Admin Panel';
+                
+                // Hide the toggle arrow since we're hiding the content
+                adminToggle.style.display = 'none';
+                
+                // Show gear button in admin panel
+                gearBtn.style.display = 'block';
                 gearBtn.style.opacity = '1';
             }
             
@@ -2240,8 +2437,19 @@ Total conversations: ${conversations.length}
             const loginDiv = document.getElementById('adminLogin');
             const gearBtn = document.getElementById('settingsToggle');
             const apiSection = document.getElementById('apiKeySection');
+            const adminContent = document.getElementById('adminContent');
+            const adminTitle = document.querySelector('.admin-title');
+            const adminToggle = document.getElementById('adminToggle');
             
-            loginDiv.style.display = 'block';
+            // Show the login form content
+            adminContent.style.display = 'block';
+            
+            // Restore admin header text
+            adminTitle.textContent = 'Admin Access';
+            
+            // Show the toggle arrow
+            adminToggle.style.display = 'inline';
+            
             gearBtn.style.display = 'none';
             apiSection.classList.remove('show');
             
@@ -2710,7 +2918,7 @@ Total conversations: ${conversations.length}
             const chatMessages = document.getElementById('chatMessages');
             const messages = chatMessages.querySelectorAll('.user-message, .assistant-message');
             
-            let chatText = 'AI BOOST Chat Conversation\n';
+            let chatText = 'AI Boost Chat Conversation\n';
             chatText += '================================\n\n';
             
             messages.forEach((message, index) => {
@@ -2727,7 +2935,7 @@ Total conversations: ${conversations.length}
             });
             
             chatText += `Generated on: ${new Date().toLocaleString()}\n`;
-            chatText += 'Powered by AI BOOST - PeakMade Real Estate';
+            chatText += 'Powered by AI Boost - PeakMade Real Estate';
             
             // Copy to clipboard
             navigator.clipboard.writeText(chatText).then(() => {
@@ -3036,6 +3244,8 @@ Total conversations: ${conversations.length}
             }
         };
     </script>
+
+
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

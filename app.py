@@ -593,30 +593,39 @@ def chat():
                 metadata={"frontend_timestamp": datetime.now().isoformat()}
             )
         
-        # CRITICAL FIX: Get the actual conversation history from the database instead of session
+        # CONVERSATION CONTEXT: Handle both database and localStorage approaches
         try:
+            # Try to get conversation from database first (for database users)
             user_id = get_or_create_user_id()
+            conversation = None
+            
             if USE_MULTIUSER:
                 conversation = db_manager.get_user_conversation(user_id, conversation_id)
             else:
+                # For single-user database mode
                 conversation = db_manager.get_conversation(conversation_id)
             
             # Build proper message history for AI context
             conversation_messages = []
+            
             if conversation and 'messages' in conversation:
+                # Database conversation found - use database messages
                 for msg in conversation['messages']:
                     conversation_messages.append({
                         "role": msg['role'],
                         "content": msg['content']
                     })
+                print(f"🔍 DEBUG: Using database conversation history with {len(conversation_messages)} messages")
             else:
-                # Fallback to current message if no history found
-                conversation_messages = [{
+                # No database conversation found - use session messages (localStorage approach)
+                conversation_messages = session.get('messages', [])
+                # Add current message to session
+                conversation_messages.append({
                     "role": "user",
-                    "content": user_message
-                }]
-            
-            print(f"🔍 DEBUG: Using conversation history with {len(conversation_messages)} messages for AI context")
+                    "content": user_message,
+                    "timestamp": datetime.now().isoformat()
+                })
+                print(f"🔍 DEBUG: Using session conversation history with {len(conversation_messages)} messages (localStorage mode)")
             
         except Exception as e:
             print(f"⚠️ Warning: Could not load conversation history, using session fallback: {e}")
@@ -628,6 +637,7 @@ def chat():
                 "content": user_message,
                 "timestamp": datetime.now().isoformat()
             })
+            print(f"🔍 DEBUG: Using fallback session messages with {len(conversation_messages)} messages")
         
         # Get AI response with proper conversation context - pass API key directly
         ai_response, model_used = get_chat_response(api_key, conversation_messages, preferred_model=preferred_model)
@@ -738,6 +748,21 @@ def clear_chat():
     session['conversation_id'] = str(uuid.uuid4())
     session.modified = True
     return jsonify({'success': True})
+
+@app.route('/set-conversation-context', methods=['POST'])
+def set_conversation_context():
+    """Set conversation context for localStorage-based conversations"""
+    try:
+        data = request.get_json()
+        messages = data.get('messages', [])
+        
+        # Clear current session messages and set to localStorage messages
+        session['messages'] = messages
+        session.modified = True
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': f'Context sync error: {str(e)}'}), 500
 
 @app.route('/get_messages')
 def get_messages():
