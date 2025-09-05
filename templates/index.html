@@ -756,30 +756,34 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 15px;
-            background: linear-gradient(135deg, rgba(31, 81, 255, 0.05) 0%, rgba(144, 238, 255, 0.05) 100%);
-            border-radius: 12px;
-            padding: 20px;
-            margin: 10px 0;
-            box-shadow: 0 2px 8px rgba(31, 81, 255, 0.1);
-            border-left: 3px solid #1f51ff;
+            gap: 8px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 252, 255, 0.9) 100%);
+            border-radius: 15px;
+            padding: 6px 12px;
+            box-shadow: 0 1px 5px rgba(31, 81, 255, 0.1);
+            border: 1px solid rgba(31, 81, 255, 0.08);
+            backdrop-filter: blur(5px);
+            max-width: calc(100% - 40px);
+            height: 28px;
+            flex-direction: row;
         }
 
         .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(31, 81, 255, 0.2);
-            border-top: 5px solid #1f51ff;
-            border-right: 5px solid #90eeff;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(31, 81, 255, 0.2);
+            border-top: 2px solid #1f51ff;
+            border-right: 2px solid #90eeff;
             border-radius: 50%;
             animation: spin 0.8s linear infinite, pulse 2s ease-in-out infinite;
             flex-shrink: 0;
         }
 
         .thinking-text {
-            font-size: 16px;
-            font-weight: 500;
+            font-size: 11px;
+            font-weight: 600;
             color: #1f51ff;
+            white-space: nowrap;
         }
 
         .thinking-dots::after {
@@ -1318,10 +1322,10 @@
                         <div style="margin-top: 6px;">
                             <h4 style="margin: 0 0 3px 0; font-size: 10px;">Preferred Model</h4>
                             <select id="preferredModel" class="form-select form-select-sm" style="font-size: 10px; padding: 2px 5px;">
-                                <option value="">Auto-select (Multi-model fallback)</option>
+                                <option value="">Auto-select (GPT-4o Mini Priority + Fallback)</option>
+                                <option value="gpt-4o-mini">GPT-4o Mini (Default Priority)</option>
                                 <option value="gpt-4o">GPT-4o (Latest)</option>
                                 <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                                <option value="gpt-4o-mini">GPT-4o Mini</option>
                                 <option value="gpt-4">GPT-4</option>
                                 <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                             </select>
@@ -1377,6 +1381,13 @@
             <div class="chat-input-container">
                 <div class="input-group">
                     <input type="text" id="messageInput" class="chat-input" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
+                    
+                    <!-- AI is thinking overlay - positioned in center of input area -->
+                    <div id="thinking" class="thinking-container" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: rgba(255, 255, 255, 0.9); border-radius: 15px; padding: 6px 12px; box-shadow: 0 1px 5px rgba(31, 81, 255, 0.1); max-width: calc(100% - 40px); height: 28px;">
+                        <div class="spinner"></div>
+                        <div class="thinking-text">AI is thinking<span class="thinking-dots"></span></div>
+                    </div>
+                    
                     <div class="input-actions">
                         <button onclick="triggerFileUpload()" class="attachment-btn" title="Add attachment">
                             <svg class="attachment-icon" viewBox="0 0 24 24" width="16" height="16">
@@ -1392,10 +1403,6 @@
                             Copy
                         </button>
                     </div>
-                </div>
-                <div id="thinking" class="thinking-container" style="display: none;">
-                    <div class="spinner"></div>
-                    <div class="thinking-text">AI is thinking<span class="thinking-dots"></span></div>
                 </div>
                 <div id="errorMessage" class="error"></div>
             </div>

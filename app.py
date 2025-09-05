@@ -152,25 +152,37 @@ def get_openai_client(api_key):
         return None
 
 def get_chat_response(api_key, messages, uploaded_content="", preferred_model=None):
-    """Get response from OpenAI API with multi-model fallback"""
+    """Get response from OpenAI API with GPT-4o Mini priority and multi-model fallback"""
     if not api_key:
         return "Error: No OpenAI API key provided."
     
-    # Define model hierarchy - best to fallback order
+    # Define model hierarchy - GPT-4o Mini prioritized, then fallback order
     model_hierarchy = [
+        {"name": "gpt-4o-mini", "max_tokens": 1500, "description": "GPT-4 Omni Mini (Priority)"},
         {"name": "gpt-4o", "max_tokens": 2000, "description": "Latest GPT-4 Omni"},
         {"name": "gpt-4-turbo", "max_tokens": 1500, "description": "GPT-4 Turbo"},
-        {"name": "gpt-4o-mini", "max_tokens": 1500, "description": "GPT-4 Omni Mini"},
         {"name": "gpt-4", "max_tokens": 1200, "description": "GPT-4 Base"},
         {"name": "gpt-3.5-turbo", "max_tokens": 1000, "description": "GPT-3.5 Turbo Fallback"}
     ]
     
-    # If preferred model specified, try it first
-    if preferred_model:
+    # If preferred model specified and it's not mini, still try mini first, then preferred
+    if preferred_model and preferred_model != "gpt-4o-mini":
+        # Create new hierarchy with mini first, then preferred, then rest
+        preferred_model_config = None
+        other_models = []
+        
         for model in model_hierarchy:
             if model["name"] == preferred_model:
-                model_hierarchy.insert(0, model)
-                break
+                preferred_model_config = model
+            elif model["name"] != "gpt-4o-mini":
+                other_models.append(model)
+        
+        # Rebuild hierarchy: mini -> preferred -> others
+        new_hierarchy = [model_hierarchy[0]]  # Keep mini first
+        if preferred_model_config:
+            new_hierarchy.append(preferred_model_config)
+        new_hierarchy.extend(other_models)
+        model_hierarchy = new_hierarchy
         
     try:
         # Clean the API key of any whitespace
