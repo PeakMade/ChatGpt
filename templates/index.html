@@ -103,20 +103,26 @@
             opacity: 1;
         }
 
-        .new-chat-btn {
+        .button-row {
+            display: flex;
+            gap: 8px;
             width: 100%;
-            padding: 12px;
+        }
+
+        .new-chat-btn {
+            flex: 1;
+            padding: 10px 8px;
             background: linear-gradient(135deg, #1f51ff 0%, #90eeff 100%);
             color: white;
             border: 1px solid rgba(31, 81, 255, 0.3);
             border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             box-shadow: 0 2px 8px rgba(31, 81, 255, 0.2);
         }
 
@@ -124,6 +130,29 @@
             background: linear-gradient(135deg, #2d5eff 0%, #9ee8f4 100%);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(31, 81, 255, 0.3);
+        }
+
+        .clear-chat-btn {
+            flex: 1;
+            padding: 10px 8px;
+            background: linear-gradient(90deg, #ffb6b6 0%, #9b59b6 100%);
+            color: white;
+            border: 1px solid rgba(255, 182, 182, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 2px 8px rgba(255, 182, 182, 0.2);
+        }
+
+        .clear-chat-btn:hover {
+            background: linear-gradient(90deg, #ff9999 0%, #8e44ad 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 182, 182, 0.3);
         }
 
         .conversation-item {
@@ -1091,12 +1120,20 @@
         <div class="container">
             <div class="sidebar">
                 <div class="new-chat-section">
-                    <button onclick="startNewChat()" class="new-chat-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 5v14m-7-7h14"></path>
-                        </svg>
-                        New Chat
-                    </button>
+                    <div class="button-row">
+                        <button onclick="clearCurrentChat()" class="clear-chat-btn" title="Clear current conversation">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                            </svg>
+                            Clear Chat
+                        </button>
+                        <button onclick="startNewChat()" class="new-chat-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14m-7-7h14"></path>
+                            </svg>
+                            New Chat
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="chat-history-header" onclick="toggleChatHistory()">
@@ -1836,6 +1873,84 @@ Total conversations: ${conversations.length}
                 transition: opacity 0.3s ease;
             `;
             confirmation.textContent = '🆕 New chat started!';
+            document.body.appendChild(confirmation);
+            
+            // Fade in
+            setTimeout(() => confirmation.style.opacity = '1', 10);
+            
+            // Fade out and remove
+            setTimeout(() => {
+                confirmation.style.opacity = '0';
+                setTimeout(() => document.body.removeChild(confirmation), 300);
+            }, 2000);
+        }
+
+        function clearCurrentChat() {
+            console.log('🗑️ Clearing current chat...');
+            
+            // Ask for confirmation
+            if (!confirm('Are you sure you want to clear the current chat? This will remove all messages from the current conversation.')) {
+                return;
+            }
+            
+            // Clear the chat messages area
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = `
+                <div class="assistant-message" data-message-id="${generateMessageId()}" data-timestamp="${new Date().toISOString()}" data-role="assistant">
+                    <strong>AI Assistant:</strong> Chat cleared! I'm AI BOOST, your advanced AI assistant. How can I help you today?
+                </div>
+            `;
+            
+            // Clear the input field
+            const messageInput = document.getElementById('messageInput');
+            if (messageInput) {
+                messageInput.value = '';
+                messageInput.focus(); // Focus on input for immediate typing
+            }
+            
+            // Call the backend clear_chat endpoint
+            fetch('/clear_chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Chat cleared successfully on backend');
+                } else {
+                    console.warn('⚠️ Failed to clear chat on backend');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error clearing chat:', error);
+            });
+            
+            // Show brief confirmation
+            showClearChatConfirmation();
+            
+            console.log('✅ Current chat cleared successfully');
+        }
+        
+        function showClearChatConfirmation() {
+            // Create a brief "Chat Cleared" message
+            const confirmation = document.createElement('div');
+            confirmation.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #ffb6b6 0%, #ffcccb 100%);
+                color: white;
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-size: 12px;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(255, 182, 182, 0.3);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            confirmation.textContent = '🗑️ Chat cleared!';
             document.body.appendChild(confirmation);
             
             // Fade in

@@ -560,7 +560,11 @@ def chat():
         # Update session API key
         session['api_key'] = api_key
         
-        # Add user message to session
+        # Store current conversation ID in session for consistency
+        session['conversation_id'] = conversation_id
+        
+        # Note: We will load actual conversation history from database for AI context,
+        # but keep session messages for any legacy compatibility
         user_msg = {
             "role": "user",
             "content": user_message,
@@ -589,8 +593,44 @@ def chat():
                 metadata={"frontend_timestamp": datetime.now().isoformat()}
             )
         
-        # Get AI response with preferred model - pass API key directly
-        ai_response, model_used = get_chat_response(api_key, session['messages'], preferred_model=preferred_model)
+        # CRITICAL FIX: Get the actual conversation history from the database instead of session
+        try:
+            user_id = get_or_create_user_id()
+            if USE_MULTIUSER:
+                conversation = db_manager.get_user_conversation(user_id, conversation_id)
+            else:
+                conversation = db_manager.get_conversation(conversation_id)
+            
+            # Build proper message history for AI context
+            conversation_messages = []
+            if conversation and 'messages' in conversation:
+                for msg in conversation['messages']:
+                    conversation_messages.append({
+                        "role": msg['role'],
+                        "content": msg['content']
+                    })
+            else:
+                # Fallback to current message if no history found
+                conversation_messages = [{
+                    "role": "user",
+                    "content": user_message
+                }]
+            
+            print(f"🔍 DEBUG: Using conversation history with {len(conversation_messages)} messages for AI context")
+            
+        except Exception as e:
+            print(f"⚠️ Warning: Could not load conversation history, using session fallback: {e}")
+            # Fallback to session messages if database fails
+            conversation_messages = session.get('messages', [])
+            # Add current message if not in session
+            conversation_messages.append({
+                "role": "user",
+                "content": user_message,
+                "timestamp": datetime.now().isoformat()
+            })
+        
+        # Get AI response with proper conversation context - pass API key directly
+        ai_response, model_used = get_chat_response(api_key, conversation_messages, preferred_model=preferred_model)
         
         # Generate AI message ID
         ai_message_id = f"msg_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
@@ -634,6 +674,14 @@ def chat():
                     "preferred_model": preferred_model
                 }
             )
+        
+        # Update session with AI response for legacy compatibility
+        ai_msg = {
+            "role": "assistant", 
+            "content": ai_response,
+            "timestamp": datetime.now().isoformat()
+        }
+        session['messages'].append(ai_msg)
         
         # Save session
         session.modified = True
