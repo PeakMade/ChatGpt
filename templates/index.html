@@ -145,16 +145,33 @@
             box-shadow: 0 2px 8px rgba(31, 81, 255, 0.15);
         }
 
+        .conversation-item:hover .conversation-title {
+            color: #1f51ff;
+        }
+
+        .conversation-item:hover .conversation-preview {
+            color: #2c3e50;
+        }
+
         .conversation-item.active {
             background: linear-gradient(135deg, rgba(31, 81, 255, 0.15) 0%, rgba(144, 238, 255, 0.15) 100%);
             border-color: #90eeff;
             box-shadow: 0 2px 8px rgba(144, 238, 255, 0.3);
         }
 
+        .conversation-item.active .conversation-title {
+            color: #1f51ff;
+            font-weight: 600;
+        }
+
+        .conversation-item.active .conversation-preview {
+            color: #2c3e50;
+        }
+
         .conversation-title {
             font-weight: 500;
             font-size: 14px;
-            color: #1f51ff;
+            color: #2c3e50;
             margin-bottom: 4px;
             white-space: nowrap;
             overflow: hidden;
@@ -163,7 +180,7 @@
 
         .conversation-preview {
             font-size: 12px;
-            color: #666;
+            color: #34495e;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -172,7 +189,7 @@
 
         .conversation-time {
             font-size: 11px;
-            color: #90eeff;
+            color: #7f8c8d;
         }
 
         .conversation-actions {
@@ -911,6 +928,21 @@
                 padding: 8px;
             }
 
+            .conversation-item .conversation-title {
+                color: #2c3e50;
+                font-size: 13px;
+            }
+
+            .conversation-item .conversation-preview {
+                color: #34495e;
+                font-size: 11px;
+            }
+
+            .conversation-item .conversation-time {
+                color: #7f8c8d;
+                font-size: 10px;
+            }
+
             .conversation-title {
                 font-size: 13px;
             }
@@ -1077,7 +1109,7 @@
                     <input type="text" 
                            id="conversationSearch" 
                            placeholder="🔍 Search conversations..." 
-                           style="width: 100%; padding: 6px 8px; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; background: transparent; color: white; font-size: 12px; box-sizing: border-box;"
+                           style="width: 100%; padding: 6px 8px; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; background: rgba(255,255,255,0.1); color: #2c3e50; font-size: 12px; box-sizing: border-box; font-weight: 500;"
                            onkeyup="handleConversationSearch(event)">
                 </div>
                 
@@ -1124,6 +1156,18 @@
                         <h4 style="margin: 4px 0 3px 0; font-size: 10px;">OpenAI API Key</h4>
                         <textarea id="apiKey" class="api-key-input" placeholder="Enter your OpenAI API key here..." rows="2"></textarea>
                         <div id="apiStatus" class="status-indicator status-disconnected" style="margin-top: 1px; font-size: 8px;">Not Connected</div>
+                        
+                        <div style="margin-top: 6px;">
+                            <h4 style="margin: 0 0 3px 0; font-size: 10px;">Preferred Model</h4>
+                            <select id="preferredModel" class="form-select form-select-sm" style="font-size: 10px; padding: 2px 5px;">
+                                <option value="">Auto-select (Multi-model fallback)</option>
+                                <option value="gpt-4o">GPT-4o (Latest)</option>
+                                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                <option value="gpt-4">GPT-4</option>
+                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            </select>
+                        </div>
                         
                         <div style="margin-top: 3px; padding-top: 2px; border-top: 1px solid #e0e0e0;">
                             <h4 style="margin: 0 0 2px 0; font-size: 9px;">Engine Status</h4>
@@ -1575,7 +1619,7 @@ Total conversations: ${conversations.length}
                         const messageDiv = document.createElement('div');
                         messageDiv.className = `message ${msg.role}-message`;
                         messageDiv.setAttribute('data-message-id', msg.id);
-                        messageDiv.setAttribute('data-timestamp', msg.timestamp);
+                        messageDiv.setAttribute('data-timestamp', msg.created_at || msg.timestamp);
                         messageDiv.setAttribute('data-role', msg.role);
                         
                         const roleLabel = msg.role === 'user' ? 'You' : 'AI Assistant';
@@ -2207,6 +2251,9 @@ Total conversations: ${conversations.length}
                 // Get API key for request (empty string if using environment key)
                 const apiKeyForRequest = hasEnvironmentKey ? '' : apiKey;
                 
+                // Get preferred model selection
+                const preferredModel = document.getElementById('preferredModel').value;
+                
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: {
@@ -2217,7 +2264,8 @@ Total conversations: ${conversations.length}
                         api_key: apiKeyForRequest,
                         conversation_id: currentConversationId,
                         message_id: userMessageId,
-                        uploaded_content: uploadedContent
+                        uploaded_content: uploadedContent,
+                        preferred_model: preferredModel
                     })
                 });
 
@@ -2226,6 +2274,14 @@ Total conversations: ${conversations.length}
                 if (response.ok) {
                     // Update AI status to ready with token count
                     updateAIStatus('Ready', data.estimated_tokens || 0);
+                    
+                    // Update model display if model_used is returned
+                    if (data.model_used) {
+                        const modelElement = document.getElementById('currentModel');
+                        if (modelElement) {
+                            modelElement.textContent = data.model_used;
+                        }
+                    }
                     
                     // Add AI message with typewriter effect using the returned message ID
                     addMessageToChatWithTypewriter('assistant', data.ai_response, data.ai_message_id);

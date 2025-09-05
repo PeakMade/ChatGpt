@@ -1,10 +1,12 @@
 """
 AI BOOST - Flask Application
 A modern, responsive web application that replicates ChatGPT functionality using Flask
+Multi-User Support with PostgreSQL
 """
 
 from flask import Flask, render_template, request, jsonify, session
 import openai
+import sqlite3
 from datetime import datetime
 import uuid
 import os
@@ -12,7 +14,66 @@ from typing import List, Dict, Any
 import PyPDF2
 import io
 import json
-from database import db_manager
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Try to import multi-user database, fallback to single-user if not available
+try:
+    from database_multiuser import MultiUserDatabaseManager
+    USE_MULTIUSER = True
+    print("🔄 Multi-user database manager loaded")
+except ImportError as e:
+    print(f"⚠️  ImportError loading multi-user database: {e}")
+    from database import DatabaseManager
+    USE_MULTIUSER = False
+    print("⚠️  Fallback to single-user database (run migration first)")
+except Exception as e:
+    print(f"⚠️  Exception loading multi-user database: {e}")
+    from database import DatabaseManager
+    USE_MULTIUSER = False
+    print("⚠️  Fallback to single-user database (connection failed)")
+
+def get_or_create_user_id():
+    """Get or create a proper UUID for the user"""
+    # Allow testing with specific user ID via URL parameter
+    test_user_id = request.args.get('user_id')
+    if test_user_id and test_user_id in ['3d261fbb-1066-4db2-8339-00c287325f6b', 'b895109e-5ce3-494f-a3e5-c829d41f6b2c']:
+        session['user_id'] = test_user_id
+        print(f"🔍 DEBUG: Using test user_id from URL: {session['user_id']}")
+    elif 'user_id' not in session or session['user_id'] == 'default_user':
+        # Generate a proper UUID for anonymous users
+        session['user_id'] = str(uuid.uuid4())
+        print(f"🔍 DEBUG: Created new user_id: {session['user_id']}")
+    else:
+        print(f"🔍 DEBUG: Using existing user_id: {session['user_id']}")
+    
+    # ALWAYS ensure the user exists in the database if using multi-user mode
+    if USE_MULTIUSER:
+        try:
+            print(f"🔍 DEBUG: Ensuring user exists in database: {session['user_id']}")
+            if not db_manager.ensure_user_exists(session['user_id']):
+                print(f"⚠️  Warning: Could not ensure user exists in database")
+            else:
+                print(f"✅ User verified/created in database")
+        except Exception as e:
+            print(f"❌ Error ensuring user exists: {e}")
+    
+    return session['user_id']
+
+# Database manager
+if USE_MULTIUSER:
+    try:
+        db_manager = MultiUserDatabaseManager()
+        print("🔗 Multi-user database manager initialized successfully")
+    except Exception as e:
+        print(f"❌ Failed to initialize multi-user database: {e}")
+        from database import db_manager
+        USE_MULTIUSER = False
+        print("⚠️  Fallback to single-user database manager")
+else:
+    from database import db_manager
 
 # Azure Key Vault imports
 try:
@@ -90,24 +151,38 @@ def get_openai_client(api_key):
     except Exception as e:
         return None
 
-def get_chat_response(api_key, messages, uploaded_content=""):
-    """Get response from OpenAI API"""
+def get_chat_response(api_key, messages, uploaded_content="", preferred_model=None):
+    """Get response from OpenAI API with multi-model fallback"""
     if not api_key:
         return "Error: No OpenAI API key provided."
+    
+    # Define model hierarchy - best to fallback order
+    model_hierarchy = [
+        {"name": "gpt-4o", "max_tokens": 2000, "description": "Latest GPT-4 Omni"},
+        {"name": "gpt-4-turbo", "max_tokens": 1500, "description": "GPT-4 Turbo"},
+        {"name": "gpt-4o-mini", "max_tokens": 1500, "description": "GPT-4 Omni Mini"},
+        {"name": "gpt-4", "max_tokens": 1200, "description": "GPT-4 Base"},
+        {"name": "gpt-3.5-turbo", "max_tokens": 1000, "description": "GPT-3.5 Turbo Fallback"}
+    ]
+    
+    # If preferred model specified, try it first
+    if preferred_model:
+        for model in model_hierarchy:
+            if model["name"] == preferred_model:
+                model_hierarchy.insert(0, model)
+                break
         
     try:
         # Clean the API key of any whitespace
         api_key = api_key.strip()
+        
         try:
-            # Method 1: Basic client creation
             client = openai.OpenAI(api_key=api_key)
         except Exception:
             try:
-                # Method 2: Set API key globally (fallback for older versions)
                 openai.api_key = api_key
                 client = openai.OpenAI()
             except Exception:
-                # Method 3: Use simplified approach
                 return get_chat_response_legacy(api_key, messages, uploaded_content)
         
         # Prepare messages for OpenAI
@@ -115,12 +190,15 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         
         # Add system prompt with 2025 knowledge context
         system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
-        
+
 Key information about your knowledge:
-- Current date: August 27, 2025
+- Current date: September 5, 2025
 - You have access to information and events through 2025
 - You can discuss recent developments, technologies, and current events
 - When discussing dates or timelines, remember it's currently 2025
+
+CRITICAL: If you cannot answer a question or lack sufficient information, respond with:
+"I need to try a different model for this question. Let me use a more capable version to help you better."
 
 CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
 - Always use double line breaks between paragraphs for maximum readability
@@ -135,27 +213,6 @@ CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
 - Ensure each response has excellent visual hierarchy and white space
 - Use indentation for sub-points and nested information
 - Always separate different topics with clear visual breaks
-
-SPACING EXAMPLE:
-### Main Topic
-
-This is a paragraph with good spacing.
-
-This is another paragraph after a blank line.
-
-1. First step in a process
-   - Sub-point with indentation
-   - Another sub-point
-
-2. Second step with proper spacing
-
-• Bullet point for features
-• Another bullet point
-• Third bullet point
-
-### Next Section
-
-New content starts here with proper separation.
 
 Please provide helpful, accurate, and up-to-date responses with excellent formatting and spacing."""
 
@@ -178,27 +235,65 @@ Please provide helpful, accurate, and up-to-date responses with excellent format
                 "content": msg["content"]
             })
         
-        # Get response from OpenAI using GPT-4o-mini
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Latest efficient model with better performance
-            messages=openai_messages,
-            max_tokens=1500,  # Increased for more detailed responses
-            temperature=0.7
-        )
+        # Try each model in hierarchy until one succeeds
+        last_error = None
+        for i, model_config in enumerate(model_hierarchy):
+            try:
+                print(f"🤖 Trying {model_config['name']} ({model_config['description']})...")
+                
+                response = client.chat.completions.create(
+                    model=model_config["name"],
+                    messages=openai_messages,
+                    max_tokens=model_config["max_tokens"],
+                    temperature=0.7
+                )
+                
+                response_content = response.choices[0].message.content
+                
+                # Check if model indicated it needs fallback
+                if "I need to try a different model" in response_content and i < len(model_hierarchy) - 1:
+                    print(f"🔄 {model_config['name']} suggested trying another model, falling back...")
+                    continue
+                
+                # Success! Add model info to response
+                model_info = f"\n\n---\n*Response generated by {model_config['name']} ({model_config['description']})*"
+                
+                print(f"✅ Successfully used {model_config['name']}")
+                return response_content + model_info, model_config['name']
+                
+            except openai.RateLimitError as e:
+                print(f"⚠️ Rate limit for {model_config['name']}, trying next model...")
+                last_error = f"Rate limit exceeded for {model_config['name']}"
+                continue
+                
+            except Exception as e:
+                error_msg = str(e).lower()
+                if 'model' in error_msg and 'not found' in error_msg:
+                    print(f"⚠️ {model_config['name']} not available, trying next model...")
+                    last_error = f"{model_config['name']} not available"
+                    continue
+                elif 'insufficient_quota' in error_msg or 'quota' in error_msg:
+                    print(f"⚠️ Quota exceeded for {model_config['name']}, trying next model...")
+                    last_error = f"Quota exceeded for {model_config['name']}"
+                    continue
+                else:
+                    print(f"❌ Error with {model_config['name']}: {str(e)}")
+                    last_error = str(e)
+                    continue
         
-        return response.choices[0].message.content
+        # All models failed
+        return f"Error: All available models failed. Last error: {last_error}", "error"
+        
     except openai.AuthenticationError as e:
-        return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
-    except openai.RateLimitError:
-        return "Error: Rate limit exceeded. Please try again later."
+        return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active.", "error"
     except Exception as e:
         error_msg = str(e).lower()
         if 'quota' in error_msg or 'billing' in error_msg:
-            return "Error: Insufficient quota. Please check your OpenAI account billing."
+            return "Error: Insufficient quota. Please check your OpenAI account billing.", "error"
         elif 'authentication' in error_msg or 'api key' in error_msg:
-            return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
+            return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active.", "error"
         else:
-            return f"Error: {str(e)}"
+            return f"Error: {str(e)}", "error"
 
 def get_chat_response_legacy(api_key, messages, uploaded_content=""):
     """Simplified OpenAI API approach"""
@@ -328,15 +423,102 @@ def api_key_status():
         'debug': debug_info
     })
 
+# OpenAI Chat Completions API Compatible Endpoint
+@app.route('/v1/chat/completions', methods=['POST'])
+def openai_chat_completions():
+    """
+    OpenAI Chat Completions API compatible endpoint
+    Accepts standard OpenAI API requests and returns compatible responses
+    """
+    try:
+        data = request.get_json() or {}
+        
+        # Get authorization header
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': {'message': 'Missing or invalid Authorization header', 'type': 'authentication_error'}}), 401
+        
+        # Extract API key from Bearer token
+        api_key = auth_header.replace('Bearer ', '').strip()
+        if not api_key:
+            return jsonify({'error': {'message': 'Invalid API key', 'type': 'authentication_error'}}), 401
+        
+        # Extract request parameters
+        model = data.get('model', 'gpt-4o')
+        messages = data.get('messages', [])
+        max_tokens = data.get('max_tokens', 2000)
+        temperature = data.get('temperature', 0.7)
+        
+        if not messages:
+            return jsonify({'error': {'message': 'Messages cannot be empty', 'type': 'invalid_request_error'}}), 400
+        
+        # Use our multi-model chat response function
+        try:
+            ai_response, model_used = get_chat_response(api_key, messages, preferred_model=model)
+            
+            # Generate response in OpenAI API format
+            response_id = f"chatcmpl-{uuid.uuid4().hex[:10]}"
+            created_timestamp = int(datetime.now().timestamp())
+            
+            # Calculate token usage (rough estimation)
+            prompt_tokens = sum(len(msg.get('content', '').split()) for msg in messages)
+            completion_tokens = len(ai_response.split())
+            total_tokens = prompt_tokens + completion_tokens
+            
+            return jsonify({
+                "id": response_id,
+                "object": "chat.completion",
+                "created": created_timestamp,
+                "model": model_used,
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": ai_response
+                        },
+                        "finish_reason": "stop"
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens
+                }
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'error': {
+                    'message': f'API request failed: {str(e)}',
+                    'type': 'api_error'
+                }
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'error': {
+                'message': f'Request processing failed: {str(e)}',
+                'type': 'invalid_request_error'
+            }
+        }), 400
+
 @app.route('/chat', methods=['POST'])
 def chat():
     """Handle chat messages"""
     try:
+        print("🔍 DEBUG: Chat route called")
         data = request.get_json()
+        print(f"🔍 DEBUG: Received data: {data}")
+        
         user_message = data.get('message', '').strip()
         user_api_key = data.get('api_key', '').strip()
         conversation_id = data.get('conversation_id', '').strip()
         message_id = data.get('message_id', '').strip()
+        preferred_model = data.get('preferred_model', None)  # New: Allow model selection
+        
+        print(f"🔍 DEBUG: user_message: {user_message}")
+        print(f"🔍 DEBUG: conversation_id: {conversation_id}")
         
         # Smart API key handling - check Key Vault and environment first
         secure_api_key = get_api_key()
@@ -358,12 +540,18 @@ def chat():
             conversation_id = f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
             
             # Create conversation in database
-            user_id = session.get('user_id', 'default_user')
-            db_manager.create_conversation(
-                conversation_id=conversation_id,
-                title=user_message[:50] + '...' if len(user_message) > 50 else user_message,
-                user_id=user_id
-            )
+            user_id = get_or_create_user_id()
+            if USE_MULTIUSER:
+                db_manager.create_conversation(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    title=user_message[:50] + '...' if len(user_message) > 50 else user_message
+                )
+            else:
+                db_manager.create_conversation(
+                    conversation_id=conversation_id,
+                    title=user_message[:50] + '...' if len(user_message) > 50 else user_message
+                )
         
         # Generate message ID if not provided
         if not message_id:
@@ -381,17 +569,28 @@ def chat():
         session['messages'].append(user_msg)
         
         # Save user message to database
-        db_manager.save_message(
-            conversation_id=conversation_id,
-            message_id=message_id,
-            role="user",
-            content=user_message,
-            tokens_used=0,  # User messages don't use tokens
-            metadata={"frontend_timestamp": datetime.now().isoformat()}
-        )
+        if USE_MULTIUSER:
+            db_manager.save_message(
+                user_id=get_or_create_user_id(),
+                conversation_id=conversation_id,
+                message_id=message_id,
+                role="user",
+                content=user_message,
+                tokens_used=0,  # User messages don't use tokens
+                metadata={"frontend_timestamp": datetime.now().isoformat()}
+            )
+        else:
+            db_manager.save_message(
+                conversation_id=conversation_id,
+                message_id=message_id,
+                role="user",
+                content=user_message,
+                tokens_used=0,  # User messages don't use tokens
+                metadata={"frontend_timestamp": datetime.now().isoformat()}
+            )
         
-        # Get AI response - pass API key directly
-        ai_response = get_chat_response(api_key, session['messages'])
+        # Get AI response with preferred model - pass API key directly
+        ai_response, model_used = get_chat_response(api_key, session['messages'], preferred_model=preferred_model)
         
         # Generate AI message ID
         ai_message_id = f"msg_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
@@ -407,15 +606,34 @@ def chat():
         }
         session['messages'].append(ai_msg)
         
-        # Save AI message to database
-        db_manager.save_message(
-            conversation_id=conversation_id,
-            message_id=ai_message_id,
-            role="assistant",
-            content=ai_response,
-            tokens_used=int(estimated_tokens),
-            metadata={"frontend_timestamp": datetime.now().isoformat()}
-        )
+        # Save AI message to database with model info
+        if USE_MULTIUSER:
+            db_manager.save_message(
+                user_id=get_or_create_user_id(),
+                conversation_id=conversation_id,
+                message_id=ai_message_id,
+                role="assistant",
+                content=ai_response,
+                tokens_used=int(estimated_tokens),
+                metadata={
+                    "frontend_timestamp": datetime.now().isoformat(),
+                    "model_used": model_used,
+                    "preferred_model": preferred_model
+                }
+            )
+        else:
+            db_manager.save_message(
+                conversation_id=conversation_id,
+                message_id=ai_message_id,
+                role="assistant",
+                content=ai_response,
+                tokens_used=int(estimated_tokens),
+                metadata={
+                    "frontend_timestamp": datetime.now().isoformat(),
+                    "model_used": model_used,
+                    "preferred_model": preferred_model
+                }
+            )
         
         # Save session
         session.modified = True
@@ -426,11 +644,15 @@ def chat():
             'conversation_id': conversation_id,
             'user_message_id': message_id,
             'ai_message_id': ai_message_id,
+            'model_used': model_used,
             'timestamp': datetime.now().isoformat(),
             'estimated_tokens': int(estimated_tokens)
         })
         
     except Exception as e:
+        print(f"❌ ERROR in chat route: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/upload', methods=['POST'])
@@ -497,14 +719,24 @@ def get_messages():
 def get_conversations():
     """Get all conversations for the user"""
     try:
-        user_id = session.get('user_id', 'default_user')
-        conversations = db_manager.get_conversations(user_id)
+        user_id = get_or_create_user_id()
+        print(f"🔍 DEBUG: Getting conversations for user_id: {user_id}")
+        
+        if USE_MULTIUSER:
+            conversations = db_manager.get_user_conversations(user_id)
+            print(f"🔍 DEBUG: Multi-user mode - found {len(conversations)} conversations")
+        else:
+            conversations = db_manager.get_conversations()
+            print(f"🔍 DEBUG: Single-user mode - found {len(conversations)} conversations")
+        
+        print(f"🔍 DEBUG: Conversations: {conversations}")
         
         return jsonify({
             'success': True,
             'conversations': conversations
         })
     except Exception as e:
+        print(f"❌ Error getting conversations: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -514,7 +746,10 @@ def get_conversations():
 def get_conversation(conversation_id):
     """Get a specific conversation with all messages"""
     try:
-        conversation = db_manager.get_conversation(conversation_id)
+        user_id = get_or_create_user_id()
+        print(f"🔍 DEBUG: Getting conversation {conversation_id} for user_id: {user_id}")
+        
+        conversation = db_manager.get_user_conversation(user_id, conversation_id)
         
         if not conversation:
             return jsonify({
@@ -527,25 +762,214 @@ def get_conversation(conversation_id):
             'conversation': conversation
         })
     except Exception as e:
+        print(f"❌ Error getting conversation {conversation_id}: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
-@app.route('/api/conversations', methods=['POST'])
-def create_conversation():
-    """Create a new conversation"""
+# OpenAI Conversations API Compatible Endpoints
+
+@app.route('/v1/conversations', methods=['POST'])
+def create_openai_conversation():
+    """
+    Create a new conversation using OpenAI Conversations API format
+    Example Request:
+    {
+        "metadata": {"topic": "demo"},
+        "items": [
+            {
+                "type": "message",
+                "role": "user", 
+                "content": "Hello!"
+            }
+        ]
+    }
+    """
     try:
         data = request.get_json() or {}
-        user_id = session.get('user_id', 'default_user')
+        
+        # Get authorization header
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Missing or invalid Authorization header'}), 401
+        
+        # Extract API key from Bearer token
+        api_key = auth_header.replace('Bearer ', '').strip()
+        if not api_key:
+            return jsonify({'error': 'Invalid API key'}), 401
+        
+        # Generate conversation ID
+        conversation_id = f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        
+        # Extract metadata
+        metadata = data.get('metadata', {})
+        topic = metadata.get('topic', 'New Conversation')
+        
+        # Create conversation in database
+        user_id = get_or_create_user_id()
+        if USE_MULTIUSER:
+            db_manager.create_conversation(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                title=topic
+            )
+        else:
+            db_manager.create_conversation(
+                conversation_id=conversation_id,
+                title=topic
+            )
+        
+        # Process initial items (messages) if provided
+        items = data.get('items', [])
+        for item in items:
+            if item.get('type') == 'message':
+                message_id = f"msg_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+                role = item.get('role', 'user')
+                content = item.get('content', '')
+                
+                # Save message to database
+                if USE_MULTIUSER:
+                    db_manager.save_message(
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        message_id=message_id,
+                        role=role,
+                        content=content,
+                        tokens_used=0,
+                        metadata={"api_key_used": True, "openai_api_format": True}
+                    )
+                else:
+                    db_manager.save_message(
+                        conversation_id=conversation_id,
+                        message_id=message_id,
+                        role=role,
+                        content=content,
+                        tokens_used=0,
+                        metadata={"api_key_used": True, "openai_api_format": True}
+                    )
+        
+        # Return OpenAI API format response
+        return jsonify({
+            "id": conversation_id,
+            "object": "conversation",
+            "created_at": int(datetime.now().timestamp()),
+            "metadata": metadata
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to create conversation: {str(e)}'}), 500
+
+@app.route('/v1/conversations/<conversation_id>', methods=['GET'])
+def get_openai_conversation(conversation_id):
+    """
+    Get conversation details using OpenAI Conversations API format
+    """
+    try:
+        # Get authorization header
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Missing or invalid Authorization header'}), 401
+        
+        # Get conversation from database
+        conversation = db_manager.get_conversation(conversation_id)
+        if not conversation:
+            return jsonify({'error': 'Conversation not found'}), 404
+        
+        # Parse created_at timestamp
+        try:
+            created_at = int(datetime.fromisoformat(conversation['created_at'].replace('Z', '+00:00')).timestamp())
+        except:
+            created_at = int(datetime.now().timestamp())
+        
+        # Extract metadata from conversation title or create default
+        metadata = {"topic": conversation['title']}
+        
+        # Return OpenAI API format response
+        return jsonify({
+            "id": conversation['id'],
+            "object": "conversation",
+            "created_at": created_at,
+            "metadata": metadata
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to get conversation: {str(e)}'}), 500
+
+@app.route('/v1/conversations/<conversation_id>', methods=['PATCH'])
+def update_openai_conversation(conversation_id):
+    """
+    Update conversation using OpenAI Conversations API format
+    Example Request:
+    {
+        "metadata": {"topic": "project-x"}
+    }
+    """
+    try:
+        # Get authorization header
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Missing or invalid Authorization header'}), 401
+        
+        data = request.get_json() or {}
+        metadata = data.get('metadata', {})
+        
+        # Check if conversation exists
+        conversation = db_manager.get_conversation(conversation_id)
+        if not conversation:
+            return jsonify({'error': 'Conversation not found'}), 404
+        
+        # Update conversation title from metadata topic
+        new_title = metadata.get('topic', conversation['title'])
+        
+        # Update in database
+        with sqlite3.connect(db_manager.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE conversations 
+                SET title = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            ''', (new_title, conversation_id))
+            conn.commit()
+        
+        # Parse created_at timestamp
+        try:
+            created_at = int(datetime.fromisoformat(conversation['created_at'].replace('Z', '+00:00')).timestamp())
+        except:
+            created_at = int(datetime.now().timestamp())
+        
+        # Return OpenAI API format response
+        return jsonify({
+            "id": conversation_id,
+            "object": "conversation",
+            "created_at": created_at,
+            "metadata": metadata
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to update conversation: {str(e)}'}), 500
+
+# Keep existing API endpoints for backward compatibility
+@app.route('/api/conversations', methods=['POST'])
+def create_conversation():
+    """Create a new conversation (legacy format)"""
+    try:
+        data = request.get_json() or {}
+        user_id = get_or_create_user_id()
         title = data.get('title', 'New Conversation')
         conversation_id = data.get('conversation_id')
         
-        new_conversation_id = db_manager.create_conversation(
-            conversation_id=conversation_id,
-            title=title,
-            user_id=user_id
-        )
+        if USE_MULTIUSER:
+            new_conversation_id = db_manager.create_conversation(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                title=title
+            )
+        else:
+            new_conversation_id = db_manager.create_conversation(
+                conversation_id=conversation_id,
+                title=title
+            )
         
         return jsonify({
             'success': True,
@@ -585,12 +1009,16 @@ def update_conversation(conversation_id):
 def delete_conversation(conversation_id):
     """Delete a conversation"""
     try:
-        success = db_manager.delete_conversation(conversation_id)
+        user_id = get_or_create_user_id()
+        print(f"🔍 DEBUG: Deleting conversation {conversation_id} for user_id: {user_id}")
+        
+        success = db_manager.delete_user_conversation(user_id, conversation_id)
         
         return jsonify({
             'success': success
         })
     except Exception as e:
+        print(f"❌ Error deleting conversation {conversation_id}: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -600,6 +1028,9 @@ def delete_conversation(conversation_id):
 def save_message():
     """Save a message to the database"""
     try:
+        # Get user_id from session for multi-user support
+        user_id = get_or_create_user_id()
+        
         data = request.get_json()
         conversation_id = data.get('conversation_id')
         message_id = data.get('message_id')
@@ -614,14 +1045,25 @@ def save_message():
                 'error': 'Missing required fields'
             }), 400
         
-        success = db_manager.save_message(
-            conversation_id=conversation_id,
-            message_id=message_id,
-            role=role,
-            content=content,
-            tokens_used=tokens_used,
-            metadata=metadata
-        )
+        if USE_MULTIUSER:
+            success = db_manager.save_message(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                message_id=message_id,
+                role=role,
+                content=content,
+                tokens_used=tokens_used,
+                metadata=metadata
+            )
+        else:
+            success = db_manager.save_message(
+                conversation_id=conversation_id,
+                message_id=message_id,
+                role=role,
+                content=content,
+                tokens_used=tokens_used,
+                metadata=metadata
+            )
         
         return jsonify({
             'success': success
@@ -637,7 +1079,7 @@ def search_conversations():
     """Search conversations"""
     try:
         query = request.args.get('q', '').strip()
-        user_id = session.get('user_id', 'default_user')
+        user_id = get_or_create_user_id()
         
         if not query:
             return jsonify({
@@ -645,7 +1087,10 @@ def search_conversations():
                 'error': 'Search query is required'
             }), 400
         
-        results = db_manager.search_conversations(query, user_id)
+        if USE_MULTIUSER:
+            results = db_manager.search_user_conversations(user_id, query)
+        else:
+            results = db_manager.search_conversations(query)
         
         return jsonify({
             'success': True,
@@ -661,7 +1106,7 @@ def search_conversations():
 def get_conversation_stats():
     """Get conversation statistics"""
     try:
-        user_id = session.get('user_id', 'default_user')
+        user_id = get_or_create_user_id()
         stats = db_manager.get_conversation_stats(user_id)
         
         return jsonify({
