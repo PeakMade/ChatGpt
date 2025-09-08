@@ -1512,6 +1512,7 @@
     <script>
         let uploadedContent = '';
         let currentConversationId = null;
+        let currentThreadId = null; // OpenAI thread ID for conversation persistence
         let conversations = JSON.parse(localStorage.getItem('chatConversations') || '[]');
         let messageIdCounter = parseInt(localStorage.getItem('messageIdCounter') || '1');
         
@@ -1894,6 +1895,48 @@ Total conversations: ${conversations.length}
                     currentConversationId = conversationId;
                     localStorage.setItem('currentConversationId', currentConversationId);
                     
+                    // Extract OpenAI thread_id from message metadata (if available)
+                    let extractedThreadId = null;
+                    if (conversation.messages && conversation.messages.length > 0) {
+                        for (const msg of conversation.messages) {
+                            if (msg.metadata && typeof msg.metadata === 'object') {
+                                if (msg.metadata.openai_thread_id) {
+                                    extractedThreadId = msg.metadata.openai_thread_id;
+                                    break;
+                                }
+                            } else if (msg.metadata && typeof msg.metadata === 'string') {
+                                try {
+                                    const parsedMetadata = JSON.parse(msg.metadata);
+                                    if (parsedMetadata.openai_thread_id) {
+                                        extractedThreadId = parsedMetadata.openai_thread_id;
+                                        break;
+                                    }
+                                } catch (e) {
+                                    // Ignore JSON parse errors
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Debug: Log what we found
+                    console.log('🔍 DEBUG: Loading conversation:', conversationId);
+                    console.log('🔍 DEBUG: Found messages:', conversation.messages?.length || 0);
+                    console.log('🔍 DEBUG: Extracted thread_id:', extractedThreadId);
+                    console.log('🔍 DEBUG: Current thread_id before update:', currentThreadId);
+                    
+                    // Set the OpenAI thread_id for this conversation
+                    if (extractedThreadId) {
+                        currentThreadId = extractedThreadId;
+                        localStorage.setItem('currentThreadId', currentThreadId);
+                        console.log('🧵 Restored OpenAI thread_id from conversation:', currentThreadId);
+                    } else {
+                        // Clear thread_id if not found (old conversation or no OpenAI thread)
+                        currentThreadId = null;
+                        localStorage.removeItem('currentThreadId');
+                        console.log('🧵 No OpenAI thread_id found for this conversation');
+                    }
+                    console.log('🔍 DEBUG: Current thread_id after update:', currentThreadId);
+                    
                     // Clear current chat
                     const chatMessages = document.getElementById('chatMessages');
                     chatMessages.innerHTML = '';
@@ -2077,6 +2120,11 @@ Total conversations: ${conversations.length}
             // Generate new conversation ID
             const previousConversationId = currentConversationId;
             currentConversationId = generateConversationId();
+            
+            // Clear OpenAI thread ID for new conversation
+            currentThreadId = null;
+            localStorage.removeItem('currentThreadId');
+            console.log('🧵 Cleared OpenAI thread ID for new conversation');
             
             // Save the new conversation ID to localStorage
             localStorage.setItem('currentConversationId', currentConversationId);
@@ -2462,6 +2510,13 @@ Total conversations: ${conversations.length}
             // Try to restore previous conversation ID from localStorage
             const savedConversationId = localStorage.getItem('currentConversationId');
             
+            // Try to restore previous OpenAI thread ID from localStorage
+            const savedThreadId = localStorage.getItem('currentThreadId');
+            if (savedThreadId) {
+                currentThreadId = savedThreadId;
+                console.log('🧵 Restored OpenAI thread ID:', currentThreadId);
+            }
+            
             // Initialize conversation if needed
             if (!currentConversationId) {
                 if (savedConversationId) {
@@ -2687,6 +2742,13 @@ Total conversations: ${conversations.length}
                 // Get preferred model selection
                 const preferredModel = document.getElementById('preferredModel').value;
                 
+                // Debug: Log what we're sending
+                console.log('🚀 DEBUG: Sending message with data:');
+                console.log('  - message:', message);
+                console.log('  - conversation_id:', currentConversationId);
+                console.log('  - thread_id:', currentThreadId);
+                console.log('  - message_id:', userMessageId);
+                
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: {
@@ -2696,6 +2758,7 @@ Total conversations: ${conversations.length}
                         message: message,
                         api_key: apiKeyForRequest,
                         conversation_id: currentConversationId,
+                        thread_id: currentThreadId, // Send OpenAI thread ID for conversation persistence
                         message_id: userMessageId,
                         uploaded_content: uploadedContent,
                         preferred_model: preferredModel
@@ -2717,12 +2780,19 @@ Total conversations: ${conversations.length}
                     }
                     
                     // Add AI message with typewriter effect using the returned message ID
-                    addMessageToChatWithTypewriter('assistant', data.ai_response, data.ai_message_id);
+                    addMessageToChatWithTypewriter('assistant', data.ai_response || data.response, data.ai_message_id);
                     
                     // Update current conversation ID from backend response
                     if (data.conversation_id) {
                         currentConversationId = data.conversation_id;
                         localStorage.setItem('currentConversationId', currentConversationId);
+                    }
+                    
+                    // Store OpenAI thread_id for conversation persistence
+                    if (data.thread_id) {
+                        currentThreadId = data.thread_id;
+                        localStorage.setItem('currentThreadId', currentThreadId);
+                        console.log('🧵 Stored OpenAI thread_id:', currentThreadId);
                     }
                     
                     // Save conversation after successful response

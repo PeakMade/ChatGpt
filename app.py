@@ -1,7 +1,7 @@
 """
 AI BOOST - Flask Application
 A modern, responsive web application that replicates ChatGPT functionality using Flask
-Multi-User Support with PostgreSQL
+Multi-User Support with PostgreSQL + OpenAI Assistants API
 """
 
 from flask import Flask, render_template, request, jsonify, session
@@ -16,6 +16,7 @@ import PyPDF2
 import io
 import json
 from dotenv import load_dotenv
+from openai_assistant_manager import OpenAIAssistantManager
 
 # Load environment variables
 load_dotenv()
@@ -43,12 +44,15 @@ def get_or_create_user_id():
     if test_user_id and test_user_id in ['3d261fbb-1066-4db2-8339-00c287325f6b', 'b895109e-5ce3-494f-a3e5-c829d41f6b2c']:
         session['user_id'] = test_user_id
         print(f"🔍 DEBUG: Using test user_id from URL: {session['user_id']}")
-    elif 'user_id' not in session or session['user_id'] == 'default_user':
+    elif 'user_id' not in session or session['user_id'] == 'default_user' or not session['user_id']:
         # Generate a proper UUID for anonymous users
         session['user_id'] = str(uuid.uuid4())
         print(f"🔍 DEBUG: Created new user_id: {session['user_id']}")
     else:
         print(f"🔍 DEBUG: Using existing user_id: {session['user_id']}")
+    
+    # Make session permanent to persist across browser sessions
+    session.permanent = True
     
     # ALWAYS ensure the user exists in the database if using multi-user mode
     if USE_MULTIUSER:
@@ -90,6 +94,25 @@ if USE_MULTIUSER:
 else:
     from database import db_manager
 
+# OpenAI Assistant Manager (global instance)
+openai_assistant_manager = None
+
+def get_or_create_assistant_manager():
+    """Get or create OpenAI Assistant Manager with optimal API pattern"""
+    global openai_assistant_manager
+    
+    if not openai_assistant_manager:
+        api_key = get_api_key()
+        if not api_key:
+            raise ValueError("OpenAI API key not found in environment or Key Vault")
+        
+        openai_assistant_manager = OpenAIAssistantManager(api_key)
+        # Step 1: Create assistant once on startup
+        openai_assistant_manager.create_assistant()
+        print("🤖 OpenAI Assistant Manager initialized with optimal API pattern")
+    
+    return openai_assistant_manager
+
 # Azure Key Vault imports
 try:
     from azure.identity import DefaultAzureCredential
@@ -113,7 +136,9 @@ app = Flask(__name__)
 # Use a consistent secret key for development, secure random for production
 app.secret_key = config.SECRET_KEY
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
+app.config['PERMANENT_SESSION_LIFETIME'] = 2592000  # 30 days (maximum practical)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 def get_api_key_from_keyvault():
     """Get OpenAI API key from Azure Key Vault"""
@@ -429,6 +454,23 @@ def index():
     if 'conversation_id' not in session:
         session['conversation_id'] = str(uuid.uuid4())
     
+    # Initialize user_id for conversation persistence
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
+        print(f"🔍 DEBUG: Initialized new user_id in session: {session['user_id']}")
+    else:
+        print(f"🔍 DEBUG: Using existing user_id from session: {session['user_id']}")
+    
+    # Ensure user exists in database if using multi-user mode
+    if USE_MULTIUSER:
+        try:
+            if not db_manager.ensure_user_exists(session['user_id']):
+                print(f"⚠️  Warning: Could not ensure user exists in database")
+            else:
+                print(f"✅ User verified/created in database during index load")
+        except Exception as e:
+            print(f"❌ Error ensuring user exists during index load: {e}")
+    
     return render_template('index.html')
 
 @app.route('/api-key-status')
@@ -532,213 +574,147 @@ def openai_chat_completions():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Handle chat messages"""
+    """Handle chat messages using optimal OpenAI Assistants API pattern"""
     try:
-        print("🔍 DEBUG: Chat route called")
+        print("� DEBUG: Chat route called - using OpenAI Assistants API")
         data = request.get_json()
         print(f"🔍 DEBUG: Received data: {data}")
         
         user_message = data.get('message', '').strip()
         user_api_key = data.get('api_key', '').strip()
-        conversation_id = data.get('conversation_id', '').strip()
-        message_id = data.get('message_id', '').strip()
-        preferred_model = data.get('preferred_model', None)  # New: Allow model selection
+        thread_id = data.get('thread_id') or ''  # Handle None case
+        thread_id = thread_id.strip() if thread_id else ''  # Safe strip
+        conversation_id = data.get('conversation_id', '').strip()  # Legacy support
         
         print(f"🔍 DEBUG: user_message: {user_message}")
+        print(f"🔍 DEBUG: thread_id: {thread_id}")
         print(f"🔍 DEBUG: conversation_id: {conversation_id}")
         
-        # Smart API key handling - check Key Vault and environment first
-        secure_api_key = get_api_key()
-        
-        # Use secure key (Key Vault/environment) if available, otherwise user input
-        if secure_api_key:
-            api_key = secure_api_key
-        else:
-            api_key = user_api_key
-        
+        # Validation
         if not user_message:
             return jsonify({'error': 'Message cannot be empty'}), 400
+        
+        # Smart API key handling - environment/Key Vault first, then user input
+        secure_api_key = get_api_key()
+        api_key = secure_api_key if secure_api_key else user_api_key
         
         if not api_key:
             return jsonify({'error': 'Please enter your OpenAI API key'}), 400
         
-        # Ensure we have a conversation ID
-        if not conversation_id:
-            conversation_id = generate_conversation_id()
-            
-            # Create conversation in database
+        # Get or create OpenAI Assistant Manager
+        try:
+            assistant_manager = get_or_create_assistant_manager()
+        except Exception as e:
+            print(f"❌ Failed to initialize assistant manager: {e}")
+            return jsonify({'error': 'Failed to initialize AI assistant'}), 500
+        
+        # Use OpenAI thread_id if provided, otherwise create new thread
+        # (conversation_id is for database compatibility)
+        if thread_id and thread_id.startswith('thread_'):
+            print(f"🧵 Using existing OpenAI thread: {thread_id}")
+        else:
+            print("🆕 Creating new OpenAI thread")
+            thread_id = None  # Will be created in complete_chat_flow
+        
+        # Execute the optimal OpenAI chat flow
+        print("🤖 Executing optimal OpenAI Assistants API flow...")
+        result = assistant_manager.complete_chat_flow(user_message, thread_id)
+        
+        if not result["success"]:
+            print(f"❌ OpenAI chat flow failed: {result.get('error')}")
+            return jsonify({
+                'error': f"AI processing failed: {result.get('error')}",
+                'success': False
+            }), 500
+        
+        # Extract results from OpenAI API
+        thread_id = result["thread_id"]
+        user_message_id = result["user_message_id"]
+        assistant_message_id = result["assistant_message_id"] 
+        ai_response = result["response"]
+        run_id = result["run_id"]
+        
+        print(f"✅ OpenAI chat flow completed:")
+        print(f"   Thread ID: {thread_id}")
+        print(f"   User Message ID: {user_message_id}")
+        print(f"   Assistant Message ID: {assistant_message_id}")
+        print(f"   Run ID: {run_id}")
+        
+        # Update session with OpenAI thread ID
+        session['api_key'] = api_key
+        session['thread_id'] = thread_id
+        session['last_conversation_id'] = conversation_id  # Keep for compatibility
+        
+        # Optional: Save to database for analytics/backup (using thread_id as conversation_id)
+        try:
             user_id = get_or_create_user_id()
+            
+            # Use thread_id as conversation_id for database storage
+            if not conversation_id:
+                conversation_id = thread_id
+            
             if USE_MULTIUSER:
-                db_manager.create_conversation(
+                # Create conversation record if it doesn't exist
+                try:
+                    db_manager.create_conversation(
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        title=user_message[:50] + '...' if len(user_message) > 50 else user_message
+                    )
+                except:
+                    pass  # Conversation might already exist
+                
+                # Save user message with OpenAI message ID
+                db_manager.save_message(
                     user_id=user_id,
                     conversation_id=conversation_id,
-                    title=user_message[:50] + '...' if len(user_message) > 50 else user_message
+                    message_id=user_message_id,
+                    role="user",
+                    content=user_message,
+                    tokens_used=0,
+                    metadata={"openai_thread_id": thread_id, "openai_run_id": run_id}
                 )
-            else:
-                db_manager.create_conversation(
+                
+                # Save AI message with OpenAI message ID
+                db_manager.save_message(
+                    user_id=user_id,
                     conversation_id=conversation_id,
-                    title=user_message[:50] + '...' if len(user_message) > 50 else user_message
+                    message_id=assistant_message_id,
+                    role="assistant",
+                    content=ai_response,
+                    tokens_used=0,  # OpenAI handles token counting
+                    metadata={"openai_thread_id": thread_id, "openai_run_id": run_id}
                 )
-        
-        # Generate message ID if not provided
-        if not message_id:
-            message_id = f"msg_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
-        
-        # Update session API key
-        session['api_key'] = api_key
-        
-        # Store current conversation ID in session for consistency
-        session['conversation_id'] = conversation_id
-        
-        # Note: We will load actual conversation history from database for AI context,
-        # but keep session messages for any legacy compatibility
-        user_msg = {
-            "role": "user",
-            "content": user_message,
-            "timestamp": datetime.now().isoformat()
-        }
-        session['messages'].append(user_msg)
-        
-        # Save user message to database
-        if USE_MULTIUSER:
-            db_manager.save_message(
-                user_id=get_or_create_user_id(),
-                conversation_id=conversation_id,
-                message_id=message_id,
-                role="user",
-                content=user_message,
-                tokens_used=0,  # User messages don't use tokens
-                metadata={"frontend_timestamp": datetime.now().isoformat()}
-            )
-        else:
-            db_manager.save_message(
-                conversation_id=conversation_id,
-                message_id=message_id,
-                role="user",
-                content=user_message,
-                tokens_used=0,  # User messages don't use tokens
-                metadata={"frontend_timestamp": datetime.now().isoformat()}
-            )
-        
-        # CONVERSATION CONTEXT: Handle both database and localStorage approaches
-        try:
-            # Try to get conversation from database first (for database users)
-            user_id = get_or_create_user_id()
-            conversation = None
-            
-            if USE_MULTIUSER:
-                conversation = db_manager.get_user_conversation(user_id, conversation_id)
-            else:
-                # For single-user database mode
-                conversation = db_manager.get_conversation(conversation_id)
-            
-            # Build proper message history for AI context
-            conversation_messages = []
-            
-            if conversation and 'messages' in conversation:
-                # Database conversation found - use database messages
-                for msg in conversation['messages']:
-                    conversation_messages.append({
-                        "role": msg['role'],
-                        "content": msg['content']
-                    })
-                print(f"🔍 DEBUG: Using database conversation history with {len(conversation_messages)} messages")
-            else:
-                # No database conversation found - use session messages (localStorage approach)
-                conversation_messages = session.get('messages', [])
-                # Add current message to session
-                conversation_messages.append({
-                    "role": "user",
-                    "content": user_message,
-                    "timestamp": datetime.now().isoformat()
-                })
-                print(f"🔍 DEBUG: Using session conversation history with {len(conversation_messages)} messages (localStorage mode)")
+                
+            print("✅ Messages saved to database for backup/analytics")
             
         except Exception as e:
-            print(f"⚠️ Warning: Could not load conversation history, using session fallback: {e}")
-            # Fallback to session messages if database fails
-            conversation_messages = session.get('messages', [])
-            # Add current message if not in session
-            conversation_messages.append({
-                "role": "user",
-                "content": user_message,
-                "timestamp": datetime.now().isoformat()
-            })
-            print(f"🔍 DEBUG: Using fallback session messages with {len(conversation_messages)} messages")
+            print(f"⚠️ Database save failed (non-critical): {e}")
+            # Continue - OpenAI handles the persistence
         
-        # Get AI response with proper conversation context - pass API key directly
-        ai_response, model_used = get_chat_response(api_key, conversation_messages, preferred_model=preferred_model)
-        
-        # Generate AI message ID
-        ai_message_id = f"msg_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
-        
-        # Estimate tokens used
-        estimated_tokens = len(ai_response.split()) * 1.3  # Rough estimation
-        
-        # Add AI response to session
-        ai_msg = {
-            "role": "assistant", 
-            "content": ai_response,
-            "timestamp": datetime.now().isoformat()
-        }
-        session['messages'].append(ai_msg)
-        
-        # Save AI message to database with model info
-        if USE_MULTIUSER:
-            db_manager.save_message(
-                user_id=get_or_create_user_id(),
-                conversation_id=conversation_id,
-                message_id=ai_message_id,
-                role="assistant",
-                content=ai_response,
-                tokens_used=int(estimated_tokens),
-                metadata={
-                    "frontend_timestamp": datetime.now().isoformat(),
-                    "model_used": model_used,
-                    "preferred_model": preferred_model
-                }
-            )
-        else:
-            db_manager.save_message(
-                conversation_id=conversation_id,
-                message_id=ai_message_id,
-                role="assistant",
-                content=ai_response,
-                tokens_used=int(estimated_tokens),
-                metadata={
-                    "frontend_timestamp": datetime.now().isoformat(),
-                    "model_used": model_used,
-                    "preferred_model": preferred_model
-                }
-            )
-        
-        # Update session with AI response for legacy compatibility
-        ai_msg = {
-            "role": "assistant", 
-            "content": ai_response,
-            "timestamp": datetime.now().isoformat()
-        }
-        session['messages'].append(ai_msg)
-        
-        # Save session
-        session.modified = True
-        
+        # Return response with OpenAI IDs
         return jsonify({
-            'user_message': user_message,
-            'ai_response': ai_response,
-            'conversation_id': conversation_id,
-            'user_message_id': message_id,
-            'ai_message_id': ai_message_id,
-            'model_used': model_used,
+            'success': True,
+            'response': ai_response,
+            'ai_response': ai_response,  # Legacy compatibility
+            'thread_id': thread_id,
+            'conversation_id': conversation_id,  # Legacy compatibility
+            'user_message_id': user_message_id,
+            'ai_message_id': assistant_message_id,
+            'run_id': run_id,
+            'model_used': 'gpt-4o',  # Assistant uses this model
             'timestamp': datetime.now().isoformat(),
-            'estimated_tokens': int(estimated_tokens)
+            'source': 'openai_assistants_api'
         })
         
     except Exception as e:
         print(f"❌ ERROR in chat route: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
+        return jsonify({
+            'error': f'Server error: {str(e)}',
+            'success': False
+        }), 500
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
