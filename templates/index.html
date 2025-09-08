@@ -17,20 +17,37 @@
             box-sizing: border-box;
         }
 
-        /* Hide scrollbars while keeping scrollability */
+        /* Force scrollbars to be visible globally */
         * {
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none; /* Internet Explorer 10+ */
+            scrollbar-width: thick; /* Firefox */
+            scrollbar-color: #1f51ff #e0e0e0; /* Firefox */
         }
+        
+        /* Global scrollbar styling for webkit browsers */
         *::-webkit-scrollbar {
-            width: 0px;
-            background: transparent; /* Chrome/Safari/Webkit */
+            width: 12px;
+            background: #f0f0f0;
+        }
+        
+        *::-webkit-scrollbar-track {
+            background: #e0e0e0;
+            border-radius: 6px;
+        }
+        
+        *::-webkit-scrollbar-thumb {
+            background: #1f51ff;
+            border-radius: 6px;
+            border: 2px solid #ffffff;
+        }
+        
+        *::-webkit-scrollbar-thumb:hover {
+            background: #90eeff;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             background: linear-gradient(135deg, #e8f4fd 0%, #d1e9f6 50%, #bbdff1 100%);
-            height: 100vh;
+            height: calc(100vh - 10px);
             padding: 0;
             margin: 0;
             display: flex;
@@ -55,7 +72,7 @@
             display: grid;
             grid-template-columns: 300px 1fr;
             gap: 10px;
-            height: calc(100vh - 50px);
+            height: calc(100vh - 60px);
             justify-content: center;
         }
 
@@ -144,7 +161,7 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 50px);
+            height: calc(100vh - 60px);
         }
 
         .new-chat-section {
@@ -184,9 +201,40 @@
 
         .conversations-list {
             flex: 1;
-            overflow-y: auto;
+            overflow-y: scroll !important;
+            overflow-x: hidden;
+            scrollbar-width: thick;
+            scrollbar-color: #1f51ff #e0e0e0;
             padding: 6px;
             transition: max-height 0.3s ease, opacity 0.3s ease;
+        }
+
+        /* Force scrollbar to always be visible */
+        .conversations-list::-webkit-scrollbar {
+            width: 14px !important;
+            background: #f0f0f0 !important;
+            display: block !important;
+        }
+
+        .conversations-list::-webkit-scrollbar-track {
+            background: #e0e0e0 !important;
+            border-radius: 7px;
+            border: 2px solid #d0d0d0;
+        }
+
+        .conversations-list::-webkit-scrollbar-thumb {
+            background: #1f51ff !important;
+            border-radius: 7px;
+            border: 2px solid #ffffff;
+            min-height: 40px;
+        }
+
+        .conversations-list::-webkit-scrollbar-thumb:hover {
+            background: #90eeff !important;
+        }
+
+        .conversations-list::-webkit-scrollbar-corner {
+            background: #f0f0f0;
         }
 
         .conversations-list.collapsed {
@@ -547,12 +595,15 @@
             width: 100%;
             margin: 0 auto;
             position: relative;
-            height: calc(100vh - 50px);
+            height: calc(100vh - 60px);
         }
 
         .chat-messages {
             flex: 1;
-            overflow-y: auto;
+            overflow-y: scroll !important;
+            overflow-x: hidden;
+            scrollbar-width: thick;
+            scrollbar-color: #1f51ff #e0e0e0;
             padding: 10px;
             display: flex;
             flex-direction: column;
@@ -560,6 +611,34 @@
             background: linear-gradient(180deg, rgba(144, 223, 239, 0.02) 0%, rgba(31, 81, 255, 0.02) 100%);
             align-items: stretch;
             min-height: 0;
+        }
+
+        /* Force scrollbar to always be visible */
+        .chat-messages::-webkit-scrollbar {
+            width: 16px !important;
+            background: #f0f0f0 !important;
+            display: block !important;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #e0e0e0 !important;
+            border-radius: 8px;
+            border: 2px solid #d0d0d0;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #1f51ff !important;
+            border-radius: 8px;
+            border: 2px solid #ffffff;
+            min-height: 40px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #90eeff !important;
+        }
+
+        .chat-messages::-webkit-scrollbar-corner {
+            background: #f0f0f0;
         }
 
         .message {
@@ -768,9 +847,29 @@
             flex-direction: row;
         }
 
+        .thinking-container-above {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: transparent;
+            border-radius: 20px;
+            padding: 10px 20px;
+            margin: 0 auto 15px auto;
+            border: none;
+            backdrop-filter: none;
+            width: calc(100% - 30px);
+            max-width: 800px;
+            box-sizing: border-box;
+            height: 40px;
+            flex-direction: row;
+            position: relative;
+            z-index: 10;
+        }
+
         .spinner {
-            width: 16px;
-            height: 16px;
+            width: 20px;
+            height: 20px;
             border: 2px solid rgba(31, 81, 255, 0.2);
             border-top: 2px solid #1f51ff;
             border-right: 2px solid #90eeff;
@@ -780,7 +879,7 @@
         }
 
         .thinking-text {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 600;
             color: #1f51ff;
             white-space: nowrap;
@@ -1378,15 +1477,15 @@
                 </div>
             </div>
 
+            <!-- AI is thinking animation - positioned above the entire input container -->
+            <div id="thinking" class="thinking-container-above" style="display: none;">
+                <div class="spinner"></div>
+                <div class="thinking-text">AI is thinking<span class="thinking-dots"></span></div>
+            </div>
+
             <div class="chat-input-container">
                 <div class="input-group">
                     <input type="text" id="messageInput" class="chat-input" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
-                    
-                    <!-- AI is thinking overlay - positioned in center of input area -->
-                    <div id="thinking" class="thinking-container" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: rgba(255, 255, 255, 0.9); border-radius: 15px; padding: 6px 12px; box-shadow: 0 1px 5px rgba(31, 81, 255, 0.1); max-width: calc(100% - 40px); height: 28px;">
-                        <div class="spinner"></div>
-                        <div class="thinking-text">AI is thinking<span class="thinking-dots"></span></div>
-                    </div>
                     
                     <div class="input-actions">
                         <button onclick="triggerFileUpload()" class="attachment-btn" title="Add attachment">
@@ -2324,7 +2423,7 @@ Total conversations: ${conversations.length}
                 
             } else {
                 console.log('❌ Login failed: Invalid credentials');
-                showLoginError('❌ Invalid username or password. Try: Peakmade / 2790');
+                showLoginError('❌ Invalid username or password. Please try again.');
             }
         }
 
@@ -2942,7 +3041,7 @@ Total conversations: ${conversations.length}
             });
             
             chatText += `Generated on: ${new Date().toLocaleString()}\n`;
-            chatText += 'Powered by AI Boost - PeakMade Real Estate';
+            chatText += 'Powered by AI Boost - Redpoint Connect';
             
             // Copy to clipboard
             navigator.clipboard.writeText(chatText).then(() => {

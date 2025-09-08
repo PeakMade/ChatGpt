@@ -10,6 +10,7 @@ import sqlite3
 from datetime import datetime
 import uuid
 import os
+import random
 from typing import List, Dict, Any
 import PyPDF2
 import io
@@ -61,6 +62,20 @@ def get_or_create_user_id():
             print(f"❌ Error ensuring user exists: {e}")
     
     return session['user_id']
+
+def generate_conversation_id():
+    """Generate a unique conversation ID with high randomness"""
+    # Use current timestamp with microseconds for uniqueness
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]  # Include milliseconds
+    
+    # Generate a longer random component for more uniqueness
+    random_part1 = uuid.uuid4().hex[:12]  # 12 characters from UUID
+    random_part2 = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=6))  # 6 random chars
+    
+    # Combine for maximum uniqueness while staying readable
+    conversation_id = f"conv_{timestamp}_{random_part1}_{random_part2}"
+    
+    return conversation_id
 
 # Database manager
 if USE_MULTIUSER:
@@ -549,7 +564,7 @@ def chat():
         
         # Ensure we have a conversation ID
         if not conversation_id:
-            conversation_id = f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+            conversation_id = generate_conversation_id()
             
             # Create conversation in database
             user_id = get_or_create_user_id()
@@ -885,7 +900,7 @@ def create_openai_conversation():
             return jsonify({'error': 'Invalid API key'}), 401
         
         # Generate conversation ID
-        conversation_id = f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        conversation_id = generate_conversation_id()
         
         # Extract metadata
         metadata = data.get('metadata', {})
