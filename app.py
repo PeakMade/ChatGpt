@@ -113,7 +113,9 @@ app = Flask(__name__)
 # Use a consistent secret key for development, secure random for production
 app.secret_key = config.SECRET_KEY
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
+# Support environment variable for session lifetime, default to 30 days
+session_lifetime = int(os.environ.get('SESSION_LIFETIME', '2592000'))  # 30 days default
+app.config['PERMANENT_SESSION_LIFETIME'] = session_lifetime
 
 def get_api_key_from_keyvault():
     """Get OpenAI API key from Azure Key Vault"""
