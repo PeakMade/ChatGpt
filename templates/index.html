@@ -1359,7 +1359,7 @@
                     <input type="text" 
                            id="conversationSearch" 
                            placeholder="Search conversations..." 
-                           style="width: 100%; padding: 6px 8px; border: 2px solid; border-image: linear-gradient(135deg, #6a5acd, #87ceeb) 1; border-radius: 6px; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%); color: #fff; font-size: 12px; box-sizing: border-box; font-weight: 500; transition: all 0.3s ease; backdrop-filter: blur(10px);"
+                           style="width: 100%; padding: 6px 8px; border: 2px solid; border-image: linear-gradient(135deg, #6a5acd, #87ceeb) 1; border-radius: 6px; background: rgba(255,255,255,0.95); color: #333; font-size: 12px; box-sizing: border-box; font-weight: 500; transition: all 0.3s ease; backdrop-filter: blur(10px);"
                            onkeyup="handleConversationSearch(event)"
                            onfocus="this.style.borderImage='linear-gradient(135deg, #90eeff, #1f51ff) 1'; this.style.boxShadow='0 0 10px rgba(144,238,255,0.3)'"
                            onblur="this.style.borderImage='linear-gradient(135deg, #6a5acd, #87ceeb) 1'; this.style.boxShadow='none'">
@@ -1996,11 +1996,15 @@ Total conversations: ${conversations.length}
 
         async function searchConversations(query) {
             try {
+                console.log('🌐 Making API request to search conversations:', query);
                 const response = await fetch(`/api/conversations/search?q=${encodeURIComponent(query)}`);
                 const data = await response.json();
                 
+                console.log('📡 API response:', data);
+                
                 if (data.success) {
-                    return data.results;
+                    console.log('✅ Search successful, results:', data.results);
+                    return data.results || [];
                 } else {
                     console.warn(`⚠️ Search failed: ${data.error}`);
                     return [];
@@ -3173,17 +3177,21 @@ Total conversations: ${conversations.length}
             }
             
             searchTimeout = setTimeout(async () => {
-                if (query.length >= 2) {
+                if (query.length >= 1) {
                     try {
+                        console.log('🔍 Searching for:', query);
                         const results = await searchConversations(query);
+                        console.log('📋 Search results:', results);
                         renderSearchResults(results);
                     } catch (error) {
                         console.error('Search error:', error);
                         // Fallback to local search
+                        console.log('🔄 Falling back to local search');
                         const localResults = conversations.filter(conv => 
-                            conv.title.toLowerCase().includes(query.toLowerCase()) ||
-                            conv.preview.toLowerCase().includes(query.toLowerCase())
+                            (conv.title && conv.title.toLowerCase().includes(query.toLowerCase())) ||
+                            (conv.preview && conv.preview.toLowerCase().includes(query.toLowerCase()))
                         );
+                        console.log('📋 Local search results:', localResults);
                         renderSearchResults(localResults);
                     }
                 }
@@ -3191,13 +3199,21 @@ Total conversations: ${conversations.length}
         }
         
         function renderSearchResults(results) {
+            console.log('🎨 Rendering search results:', results);
             const listEl = document.getElementById('conversationsList');
             
-            if (results.length === 0) {
+            if (!listEl) {
+                console.error('❌ Conversations list element not found');
+                return;
+            }
+            
+            if (!results || results.length === 0) {
+                console.log('🔍 No search results to display');
                 listEl.innerHTML = '<div class="empty-conversations">No conversations found matching your search.</div>';
                 return;
             }
             
+            console.log(`📋 Rendering ${results.length} search results`);
             listEl.innerHTML = results.map(conv => `
                 <div class="conversation-item ${conv.id === currentConversationId ? 'active' : ''}" 
                      onclick="loadConversation('${conv.id}')">
@@ -3221,6 +3237,8 @@ Total conversations: ${conversations.length}
                     </div>
                 </div>
             `).join('');
+            
+            console.log('✅ Search results rendered successfully');
         }
         
         async function showConversationStats() {
