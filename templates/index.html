@@ -1899,20 +1899,29 @@ Total conversations: ${conversations.length}
                     let extractedThreadId = null;
                     if (conversation.messages && conversation.messages.length > 0) {
                         for (const msg of conversation.messages) {
-                            if (msg.metadata && typeof msg.metadata === 'object') {
-                                if (msg.metadata.openai_thread_id) {
+                            // Check if metadata exists
+                            if (msg.metadata) {
+                                console.log('🔍 DEBUG: Checking message metadata:', msg.metadata, 'Type:', typeof msg.metadata);
+                                
+                                // Handle direct object metadata (most common)
+                                if (typeof msg.metadata === 'object' && msg.metadata.openai_thread_id) {
                                     extractedThreadId = msg.metadata.openai_thread_id;
+                                    console.log('✅ Found thread_id in object metadata:', extractedThreadId);
                                     break;
                                 }
-                            } else if (msg.metadata && typeof msg.metadata === 'string') {
-                                try {
-                                    const parsedMetadata = JSON.parse(msg.metadata);
-                                    if (parsedMetadata.openai_thread_id) {
-                                        extractedThreadId = parsedMetadata.openai_thread_id;
-                                        break;
+                                
+                                // Handle JSON string metadata (fallback)
+                                if (typeof msg.metadata === 'string') {
+                                    try {
+                                        const parsedMetadata = JSON.parse(msg.metadata);
+                                        if (parsedMetadata.openai_thread_id) {
+                                            extractedThreadId = parsedMetadata.openai_thread_id;
+                                            console.log('✅ Found thread_id in JSON string metadata:', extractedThreadId);
+                                            break;
+                                        }
+                                    } catch (e) {
+                                        console.log('⚠️ Could not parse metadata JSON:', e);
                                     }
-                                } catch (e) {
-                                    // Ignore JSON parse errors
                                 }
                             }
                         }
@@ -2748,6 +2757,15 @@ Total conversations: ${conversations.length}
                 console.log('  - conversation_id:', currentConversationId);
                 console.log('  - thread_id:', currentThreadId);
                 console.log('  - message_id:', userMessageId);
+                
+                // Critical check: Ensure thread_id is not null/undefined
+                if (!currentThreadId) {
+                    console.warn('⚠️ WARNING: No thread_id found! This will create a new conversation context.');
+                    console.log('🔄 Current conversation ID:', currentConversationId);
+                    console.log('🔄 Available in localStorage:', localStorage.getItem('currentThreadId'));
+                } else {
+                    console.log('✅ Thread ID confirmed for context preservation:', currentThreadId);
+                }
                 
                 const response = await fetch('/chat', {
                     method: 'POST',
