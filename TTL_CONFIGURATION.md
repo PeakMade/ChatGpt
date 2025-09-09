@@ -2,9 +2,9 @@
 
 ## Current Maximum TTL Settings
 
-### 1. User Session TTL: 30 Days
-- **Duration**: 2,592,000 seconds (30 days)
-- **What it means**: Users stay logged in for 30 days without needing to refresh
+### 1. User Session TTL: 60 Days
+- **Duration**: 5,184,000 seconds (60 days)
+- **What it means**: Users stay logged in for 60 days without needing to refresh
 - **Environment variable**: `SESSION_LIFETIME` (in seconds)
 
 ### 2. HTTP Request Timeout: 30 Minutes  
@@ -20,7 +20,8 @@ You can override the session lifetime by setting the `SESSION_LIFETIME` environm
 # Examples:
 SESSION_LIFETIME=86400      # 24 hours
 SESSION_LIFETIME=604800     # 7 days  
-SESSION_LIFETIME=2592000    # 30 days (current default)
+SESSION_LIFETIME=2592000    # 30 days
+SESSION_LIFETIME=5184000    # 60 days (current setting)
 SESSION_LIFETIME=31536000   # 1 year (maximum)
 ```
 
@@ -70,8 +71,8 @@ web: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 7200  # 2 hours
 
 ## Security Considerations
 
-**Long Session TTLs (30 days+):**
-- ✅ Better user experience (no re-login needed)
+**Long Session TTLs (60 days+):**
+- ✅ Excellent user experience (no re-login for 2 months)
 - ⚠️ Higher security risk if device compromised
 - ⚠️ More server memory usage for session storage
 
@@ -90,8 +91,9 @@ web: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 7200  # 2 hours
 - **Session TTL**: 30 days (convenient)
 - **Request Timeout**: 30 minutes (handles long debugging sessions)
 
-### Current Settings (Maximum Safe):
-- **Session TTL**: ✅ 30 days (2,592,000 seconds)
+### Current Settings (Extended for Better UX):
+- **Session TTL**: ✅ 60 days (5,184,000 seconds)
 - **Request Timeout**: ✅ 30 minutes (1,800 seconds)
+- **Conversation Recall**: ✅ 25 conversations (extended from default)
 
-**These are now set to the maximum practical limits for your app!**
+**These settings provide excellent user experience with extended recall capabilities!**

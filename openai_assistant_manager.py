@@ -76,6 +76,10 @@ You are knowledgeable, friendly, and always aim to be as helpful as possible."""
                 content=content
             )
             print(f"✅ Added {role} message: {message.id} to thread: {thread_id}")
+            print(f"🆔🆔🆔 MESSAGE ID: {message.id} 🆔🆔🆔")
+            print(f"📝 Content: {content[:50]}...")
+            print(f"🧵 Thread: {thread_id}")
+            print("=" * 80)
             
             return {
                 "success": True,
@@ -189,6 +193,10 @@ You are knowledgeable, friendly, and always aim to be as helpful as possible."""
                 if latest_message.role == "assistant":
                     content = latest_message.content[0].text.value if latest_message.content else ""
                     print(f"✅ Retrieved assistant message: {latest_message.id}")
+                    print(f"🆔🆔🆔 ASSISTANT MESSAGE ID: {latest_message.id} 🆔🆔🆔")
+                    print(f"📝 Assistant Response: {content[:100]}...")
+                    print(f"🧵 Thread: {thread_id}")
+                    print("=" * 80)
                     
                     return {
                         "success": True,
@@ -271,6 +279,13 @@ You are knowledgeable, friendly, and always aim to be as helpful as possible."""
             
             total_flow_time = time.time() - flow_start_time
             print(f"✅ Complete chat flow successful for thread: {thread_id} (total: {total_flow_time:.2f}s)")
+            print("\n" + "🆔" * 50)
+            print("📋 OPENAI MESSAGE IDS SUMMARY:")
+            print(f"   🧵 Thread ID: {thread_id}")
+            print(f"   👤 User Message ID: {user_msg_result['message_id']}")
+            print(f"   🤖 Assistant Message ID: {assistant_msg_result['message_id']}")
+            print(f"   ⚡ Run ID: {run_result['run_id']}")
+            print("🆔" * 50 + "\n")
             
             return {
                 "success": True,

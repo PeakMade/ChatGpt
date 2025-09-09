@@ -136,7 +136,7 @@ app = Flask(__name__)
 # Use a consistent secret key for development, secure random for production
 app.secret_key = config.SECRET_KEY
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['PERMANENT_SESSION_LIFETIME'] = 2592000  # 30 days (maximum practical)
+app.config['PERMANENT_SESSION_LIFETIME'] = 5184000  # 60 days (extended for better UX)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
@@ -799,7 +799,7 @@ def get_conversations():
         print(f"🔍 DEBUG: Getting conversations for user_id: {user_id}")
         
         if USE_MULTIUSER:
-            conversations = db_manager.get_user_conversations(user_id)
+            conversations = db_manager.get_user_conversations(user_id, limit=25)  # Extended to 25 conversations
             print(f"🔍 DEBUG: Multi-user mode - found {len(conversations)} conversations")
         else:
             conversations = db_manager.get_conversations()
