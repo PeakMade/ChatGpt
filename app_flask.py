@@ -901,6 +901,11 @@ def get_messages():
             'api_key': ''
         })
 
+@app.route('/favicon.ico')
+def favicon():
+    """Return a 204 No Content for favicon requests to avoid 404 errors"""
+    return '', 204
+
 if __name__ == '__main__':
     # For local development
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)))
