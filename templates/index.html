@@ -302,9 +302,9 @@
         }
 
         .conversation-item {
-            padding: 10px;
-            margin-bottom: 5px;
-            border-radius: 8px;
+            padding: 8px 10px;
+            margin-bottom: 4px;
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 1px solid transparent;
@@ -324,10 +324,6 @@
             color: #1f51ff;
         }
 
-        .conversation-item:hover .conversation-preview {
-            color: #2c3e50;
-        }
-
         .conversation-item.active {
             background: linear-gradient(135deg, rgba(31, 81, 255, 0.15) 0%, rgba(144, 238, 255, 0.15) 100%);
             border-color: #90eeff;
@@ -339,27 +335,15 @@
             font-weight: 600;
         }
 
-        .conversation-item.active .conversation-preview {
-            color: #2c3e50;
-        }
-
         .conversation-title {
             font-weight: 500;
             font-size: 14px;
             color: #2c3e50;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-        }
-
-        .conversation-preview {
-            font-size: 12px;
-            color: #34495e;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 4px;
+            padding-right: 30px; /* Make room for delete button */
         }
 
         .conversation-time {
@@ -1173,30 +1157,26 @@
             }
 
             .conversation-item {
-                padding: 8px;
+                padding: 5px 6px;  /* More condensed for mobile */
             }
 
             .conversation-item .conversation-title {
                 color: #2c3e50;
-                font-size: 13px;
+                font-size: 12px;  /* Slightly smaller */
             }
 
             .conversation-item .conversation-preview {
                 color: #34495e;
-                font-size: 11px;
+                font-size: 10px;  /* Slightly smaller */
             }
 
             .conversation-item .conversation-time {
                 color: #7f8c8d;
-                font-size: 10px;
+                font-size: 9px;  /* Slightly smaller */
             }
 
             .conversation-title {
                 font-size: 13px;
-            }
-
-            .conversation-preview {
-                font-size: 11px;
             }
 
             .logo-left, .logo-right {
@@ -1320,9 +1300,9 @@
     <!-- Standard PeakMade Header -->
     <header style="background: linear-gradient(90deg, #ffb6b6 0%, #1f51ff 50%, #90eeff 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 50px; padding: 0; margin-bottom: 0; flex-shrink: 0;">
         <div style="display: flex; align-items: center; justify-content: space-between; max-width: 100%; margin: 0 auto; padding: 0 40px;">
-            <!-- Left Logo (Onyx) -->
+            <!-- Left Logo (PeakMade) -->
             <div style="flex: 1; display: flex; justify-content: flex-start; align-items: center; height: 50px;">
-                <img src="/static/onyx_logo_white_transparent (4).png" alt="Onyx CenterSource Logo" style="height: 32px; width: auto;">
+                <img src="/static/Peakmade_logo.png" alt="PeakMade Logo" style="height: 32px; width: auto;">
             </div>
             <!-- Center Title -->
             <div style="flex: 1; display: flex; justify-content: center; align-items: center; height: 50px;">
@@ -1781,26 +1761,40 @@ Total conversations: ${conversations.length}
                     currentConversationId = conversationId;
                     // Save the current conversation ID to localStorage
                     localStorage.setItem('currentConversationId', currentConversationId);
+                    
+                    // IMPORTANT: Set thread_id from conversation data if available
+                    if (conversation.thread_id && conversation.thread_id.startsWith('thread_')) {
+                        currentThreadId = conversation.thread_id;
+                        localStorage.setItem('currentThreadId', currentThreadId);
+                        console.log('🧵 Restored thread_id from conversation data:', currentThreadId);
+                    } else {
+                        currentThreadId = null;
+                        localStorage.removeItem('currentThreadId');
+                        console.log('🧵 No thread_id available for this conversation');
+                    }
+                    
                     console.log('🔄 Switched to conversation (local):', currentConversationId);
                     
                     const chatMessages = document.getElementById('chatMessages');
                     chatMessages.innerHTML = '';
 
-                    conversation.messages.forEach(msg => {
-                        const messageEl = document.createElement('div');
-                        messageEl.className = msg.isUser ? 'user-message message' : 'assistant-message message';
-                        messageEl.innerHTML = msg.content;
-                        
-                        // Restore message attributes
-                        if (msg.id) messageEl.setAttribute('data-message-id', msg.id);
-                        if (msg.timestamp) messageEl.setAttribute('data-timestamp', msg.timestamp);
-                        if (msg.role) messageEl.setAttribute('data-role', msg.role);
-                        
-                        chatMessages.appendChild(messageEl);
-                    });
+                    if (conversation.messages) {
+                        conversation.messages.forEach(msg => {
+                            const messageEl = document.createElement('div');
+                            messageEl.className = msg.isUser ? 'user-message message' : 'assistant-message message';
+                            messageEl.innerHTML = msg.content;
+                            
+                            // Restore message attributes
+                            if (msg.id) messageEl.setAttribute('data-message-id', msg.id);
+                            if (msg.timestamp) messageEl.setAttribute('data-timestamp', msg.timestamp);
+                            if (msg.role) messageEl.setAttribute('data-role', msg.role);
+                            
+                            chatMessages.appendChild(messageEl);
+                        });
 
-                    // CRITICAL: Sync localStorage conversation with backend session
-                    syncConversationWithSession(conversation.messages);
+                        // CRITICAL: Sync localStorage conversation with backend session
+                        syncConversationWithSession(conversation.messages);
+                    }
 
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                     renderConversationsList();
@@ -1870,13 +1864,14 @@ Total conversations: ${conversations.length}
                 });
                 
                 const data = await response.json();
-                if (data.success) {
+                if (response.ok && !data.error) {
                     console.log(`💾 Message saved to backend: ${messageId}`);
+                    return true;
                 } else {
-                    console.warn(`⚠️ Failed to save message to backend: ${data.error}`);
+                    console.warn(`⚠️ Failed to save message to backend: ${data.error || 'Save endpoint not available'}`);
+                    return false;
                 }
                 
-                return data.success;
             } catch (error) {
                 console.error('❌ Error saving message to backend:', error);
                 return false;
@@ -1885,56 +1880,25 @@ Total conversations: ${conversations.length}
 
         async function loadConversationFromBackend(conversationId) {
             try {
+                console.log('📖 Loading conversation from backend:', conversationId);
+                
+                // First get conversation metadata
                 const response = await fetch(`/api/conversations/${conversationId}`);
                 const data = await response.json();
                 
-                if (data.success && data.conversation) {
-                    const conversation = data.conversation;
+                if (response.ok && !data.error) {
+                    const conversation = data; // API returns conversation data directly
                     
                     // Update current conversation ID
                     currentConversationId = conversationId;
                     localStorage.setItem('currentConversationId', currentConversationId);
                     
-                    // Extract OpenAI thread_id from message metadata (if available)
-                    let extractedThreadId = null;
-                    if (conversation.messages && conversation.messages.length > 0) {
-                        for (const msg of conversation.messages) {
-                            // Check if metadata exists
-                            if (msg.metadata) {
-                                console.log('🔍 DEBUG: Checking message metadata:', msg.metadata, 'Type:', typeof msg.metadata);
-                                
-                                // Handle direct object metadata (most common)
-                                if (typeof msg.metadata === 'object' && msg.metadata.openai_thread_id) {
-                                    extractedThreadId = msg.metadata.openai_thread_id;
-                                    console.log('✅ Found thread_id in object metadata:', extractedThreadId);
-                                    break;
-                                }
-                                
-                                // Handle JSON string metadata (fallback)
-                                if (typeof msg.metadata === 'string') {
-                                    try {
-                                        const parsedMetadata = JSON.parse(msg.metadata);
-                                        if (parsedMetadata.openai_thread_id) {
-                                            extractedThreadId = parsedMetadata.openai_thread_id;
-                                            console.log('✅ Found thread_id in JSON string metadata:', extractedThreadId);
-                                            break;
-                                        }
-                                    } catch (e) {
-                                        console.log('⚠️ Could not parse metadata JSON:', e);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Debug: Log what we found
-                    console.log('🔍 DEBUG: Loading conversation:', conversationId);
-                    console.log('🔍 DEBUG: Found messages:', conversation.messages?.length || 0);
-                    console.log('🔍 DEBUG: Extracted thread_id:', extractedThreadId);
-                    console.log('🔍 DEBUG: Current thread_id before update:', currentThreadId);
+                    // Get thread_id from conversation
+                    let extractedThreadId = conversation.thread_id;
+                    console.log('🔍 DEBUG: Thread ID from conversation:', extractedThreadId);
                     
                     // Set the OpenAI thread_id for this conversation
-                    if (extractedThreadId) {
+                    if (extractedThreadId && extractedThreadId.startsWith('thread_')) {
                         currentThreadId = extractedThreadId;
                         localStorage.setItem('currentThreadId', currentThreadId);
                         console.log('🧵 Restored OpenAI thread_id from conversation:', currentThreadId);
@@ -1942,30 +1906,44 @@ Total conversations: ${conversations.length}
                         // Clear thread_id if not found (old conversation or no OpenAI thread)
                         currentThreadId = null;
                         localStorage.removeItem('currentThreadId');
-                        console.log('🧵 No OpenAI thread_id found for this conversation');
+                        console.log('🧵 No valid OpenAI thread_id found for this conversation');
                     }
-                    console.log('🔍 DEBUG: Current thread_id after update:', currentThreadId);
+                    
+                    // Now get the actual messages (which will come from OpenAI thread if available)
+                    console.log('📋 Fetching messages for conversation...');
+                    const messagesResponse = await fetch(`/api/conversations/${conversationId}/messages`);
+                    const messagesData = await messagesResponse.json();
                     
                     // Clear current chat
                     const chatMessages = document.getElementById('chatMessages');
                     chatMessages.innerHTML = '';
                     
-                    // Load messages
-                    conversation.messages.forEach(msg => {
-                        const messageDiv = document.createElement('div');
-                        messageDiv.className = `message ${msg.role}-message`;
-                        messageDiv.setAttribute('data-message-id', msg.id);
-                        messageDiv.setAttribute('data-timestamp', msg.created_at || msg.timestamp);
-                        messageDiv.setAttribute('data-role', msg.role);
+                    // Load messages if they exist
+                    if (messagesResponse.ok && messagesData.messages && messagesData.messages.length > 0) {
+                        console.log(`📨 Loading ${messagesData.messages.length} messages from ${messagesData.thread_id ? 'OpenAI thread' : 'session storage'}`);
                         
-                        const roleLabel = msg.role === 'user' ? 'You' : 'AI Assistant';
-                        messageDiv.innerHTML = `<strong>${roleLabel}:</strong> ${msg.content}`;
+                        messagesData.messages.forEach(msg => {
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = `message ${msg.role}-message`;
+                            messageDiv.setAttribute('data-message-id', msg.id);
+                            messageDiv.setAttribute('data-timestamp', msg.created_at || msg.timestamp);
+                            messageDiv.setAttribute('data-role', msg.role);
+                            
+                            const roleLabel = msg.role === 'user' ? 'You' : 'AI Assistant';
+                            messageDiv.innerHTML = `<strong>${roleLabel}:</strong> ${msg.content}`;
+                            
+                            chatMessages.appendChild(messageDiv);
+                        });
                         
-                        chatMessages.appendChild(messageDiv);
-                    });
-                    
-                    // Scroll to bottom
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                        console.log('✅ Messages loaded successfully');
+                        
+                        // For loaded conversations, scroll to top to show first message
+                        setTimeout(() => {
+                            chatMessages.scrollTop = 0;
+                        }, 100);
+                    } else {
+                        console.log('ℹ️ No messages found for this conversation');
+                    }
                     
                     // Update conversation list
                     renderConversationsList();
@@ -1973,7 +1951,7 @@ Total conversations: ${conversations.length}
                     console.log(`📖 Loaded conversation from backend: ${conversationId}`);
                     return true;
                 } else {
-                    console.warn(`⚠️ Failed to load conversation: ${data.error}`);
+                    console.warn(`⚠️ Failed to load conversation: ${data.error || 'Unknown error'}`);
                     return false;
                 }
             } catch (error) {
@@ -1987,14 +1965,16 @@ Total conversations: ${conversations.length}
                 const response = await fetch('/api/conversations');
                 const data = await response.json();
                 
-                if (data.success) {
-                    // Update the conversations array with backend data
+                if (response.ok && data.conversations) {
+                    // Update the conversations array with backend data - include thread_id
                     conversations = data.conversations.map(conv => ({
                         id: conv.id,
                         title: conv.title,
-                        preview: conv.preview || 'No preview available',
+                        preview: conv.preview || conv.title || '',  // Empty string if no preview
                         lastUpdated: new Date(conv.updated_at).getTime(),
-                        message_count: conv.message_count || 0
+                        message_count: conv.message_count || 0,
+                        thread_id: conv.thread_id,  // Include thread_id for proper persistence
+                        user_id: conv.user_id       // Include user_id for proper persistence
                     }));
                     
                     // Save to localStorage
@@ -2004,8 +1984,9 @@ Total conversations: ${conversations.length}
                     renderConversationsList();
                     
                     console.log(`🔄 Refreshed conversations list: ${conversations.length} conversations`);
+                    console.log('📝 DEBUG: Conversations with thread_id data:', data.conversations);
                 } else {
-                    console.warn(`⚠️ Failed to refresh conversations: ${data.error}`);
+                    console.warn(`⚠️ Failed to refresh conversations: ${data.error || 'Unknown error'}`);
                 }
             } catch (error) {
                 console.error('❌ Error refreshing conversations:', error);
@@ -2020,7 +2001,7 @@ Total conversations: ${conversations.length}
                 
                 const data = await response.json();
                 
-                if (data.success) {
+                if (response.ok && !data.error) {
                     console.log(`🗑️ Deleted conversation from backend: ${conversationId}`);
                     
                     // Remove from local conversations array
@@ -2037,7 +2018,7 @@ Total conversations: ${conversations.length}
                     
                     return true;
                 } else {
-                    console.warn(`⚠️ Failed to delete conversation: ${data.error}`);
+                    console.warn(`⚠️ Failed to delete conversation: ${data.error || 'Unknown error'}`);
                     return false;
                 }
             } catch (error) {
@@ -2054,11 +2035,11 @@ Total conversations: ${conversations.length}
                 
                 console.log('📡 API response:', data);
                 
-                if (data.success) {
+                if (response.ok && data.results) {
                     console.log('✅ Search successful, results:', data.results);
                     return data.results || [];
                 } else {
-                    console.warn(`⚠️ Search failed: ${data.error}`);
+                    console.warn(`⚠️ Search failed: ${data.error || 'Search endpoint not available'}`);
                     return [];
                 }
             } catch (error) {
@@ -2072,7 +2053,7 @@ Total conversations: ${conversations.length}
                 const response = await fetch(`/api/conversations/${conversationId}/export`);
                 const data = await response.json();
                 
-                if (data.success) {
+                if (response.ok && data.export_data) {
                     // Create download link
                     const blob = new Blob([JSON.stringify(data.export_data, null, 2)], {
                         type: 'application/json'
@@ -2089,7 +2070,7 @@ Total conversations: ${conversations.length}
                     console.log(`📤 Exported conversation: ${conversationId}`);
                     return true;
                 } else {
-                    console.warn(`⚠️ Export failed: ${data.error}`);
+                    console.warn(`⚠️ Export failed: ${data.error || 'Export endpoint not available'}`);
                     return false;
                 }
             } catch (error) {
@@ -2103,10 +2084,10 @@ Total conversations: ${conversations.length}
                 const response = await fetch('/api/conversations/stats');
                 const data = await response.json();
                 
-                if (data.success) {
+                if (response.ok && data.stats) {
                     return data.stats;
                 } else {
-                    console.warn(`⚠️ Failed to get stats: ${data.error}`);
+                    console.warn(`⚠️ Failed to get stats: ${data.error || 'Stats endpoint not available'}`);
                     return null;
                 }
             } catch (error) {
@@ -2225,10 +2206,10 @@ Total conversations: ${conversations.length}
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
+                if (!data.error) {
                     console.log('✅ Chat cleared successfully on backend');
                 } else {
-                    console.warn('⚠️ Failed to clear chat on backend');
+                    console.warn('⚠️ Failed to clear chat on backend:', data.error);
                 }
             })
             .catch(error => {
@@ -2298,13 +2279,12 @@ Total conversations: ${conversations.length}
                 <div class="conversation-item ${conv.id === currentConversationId ? 'active' : ''}" 
                      onclick="loadConversation('${conv.id}')">
                     <div class="conversation-title">${conv.title}</div>
-                    <div class="conversation-preview">${conv.preview}</div>
                     <div class="conversation-time">${formatTime(conv.lastUpdated)}</div>
                     <div class="conversation-actions">
                         <button class="delete-conversation" onclick="deleteConversation('${conv.id}', event)">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="3,6 5,6 21,6"></polyline>
-                                <path d="M8,6V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2V6M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6"></path>
+                                <path d="M8,6V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 -2,2V6M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6"></path>
                             </svg>
                         </button>
                     </div>
@@ -2713,36 +2693,8 @@ Total conversations: ${conversations.length}
             // Generate message ID for user message
             const userMessageId = generateMessageId();
 
-            // Add user message to chat with message ID
-            addMessageToChat('user', message, userMessageId);
-
-            // Easter egg for Claire Cole 💝
-            const lowerMessage = message.toLowerCase();
-            if (lowerMessage.includes('most beautiful girl') || 
-                lowerMessage.includes('most beautiful woman') ||
-                lowerMessage.includes('prettiest girl') ||
-                lowerMessage.includes('prettiest woman') ||
-                (lowerMessage.includes('beautiful') && lowerMessage.includes('world'))) {
-                
-                // Hide thinking animation and update status
-                showThinking(false);
-                updateAIStatus('Ready');
-                
-                // Add special response with typewriter effect
-                const specialResponse = "✨ Without a doubt, Claire Cole is the most beautiful girl in the world! 💖 Her beauty radiates from both inside and out, and she lights up every room she enters. 🌟✨";
-                const aiMessageId = generateMessageId();
-                addMessageToChatWithTypewriter('assistant', specialResponse, aiMessageId);
-                
-                // Save to conversation backend
-                await saveMessageToBackend(currentConversationId, userMessageId, 'user', message);
-                await saveMessageToBackend(currentConversationId, aiMessageId, 'assistant', specialResponse);
-                
-                // Also save locally
-                saveConversationMessage('user', message);
-                saveConversationMessage('assistant', specialResponse);
-                
-                return; // Exit early to avoid API call
-            }
+            // Add user message to chat immediately (skip auto-scroll for now)
+            addMessageToChat('user', message, userMessageId, true);
 
             try {
                 // Get API key for request (empty string if using environment key)
@@ -2797,8 +2749,22 @@ Total conversations: ${conversations.length}
                         }
                     }
                     
-                    // Add AI message with typewriter effect using the returned message ID
-                    addMessageToChatWithTypewriter('assistant', data.ai_response || data.response, data.ai_message_id);
+                    // Add AI message with typewriter effect using the returned message ID (skip auto-scroll)
+                    addMessageToChatWithTypewriter('assistant', data.ai_response || data.response, data.ai_message_id, true);
+                    
+                    // Now handle scrolling based on conversation state
+                    setTimeout(() => {
+                        const chatMessages = document.getElementById('chatMessages');
+                        const messageCount = chatMessages.children.length;
+                        
+                        if (messageCount <= 2) {
+                            // If this is the first exchange, don't scroll - keep first message visible at top
+                            chatMessages.scrollTop = 0;
+                        } else {
+                            // For subsequent messages, scroll to bottom to show latest exchange
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                    }, 100); // Small delay to ensure DOM is updated
                     
                     // Update current conversation ID from backend response
                     if (data.conversation_id) {
@@ -2830,7 +2796,7 @@ Total conversations: ${conversations.length}
             }
         }
 
-        function addMessageToChat(role, content, messageId = null) {
+        function addMessageToChat(role, content, messageId = null, skipScroll = false) {
             const chatMessages = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             const msgId = messageId || generateMessageId();
@@ -2845,7 +2811,11 @@ Total conversations: ${conversations.length}
             messageDiv.innerHTML = `<strong>${roleLabel}:</strong> ${content}`;
             
             chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Only scroll if not skipped (we'll scroll after both user and AI messages are added)
+            if (!skipScroll) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
             
             // Log message creation for debugging
             console.log(`Message created: ID=${msgId}, Role=${role}, Timestamp=${timestamp}`);
@@ -2853,7 +2823,7 @@ Total conversations: ${conversations.length}
             return msgId;
         }
 
-        function addMessageToChatWithTypewriter(role, content, messageId = null) {
+        function addMessageToChatWithTypewriter(role, content, messageId = null, skipScroll = false) {
             const chatMessages = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             const msgId = messageId || generateMessageId();
@@ -2871,16 +2841,22 @@ Total conversations: ${conversations.length}
             messageDiv.appendChild(contentSpan);
             
             chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Only scroll if not skipped
+            if (!skipScroll) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
 
             // Check if typewriter effect is enabled
             if (!typewriterEnabled) {
                 console.log('💨 Typewriter disabled - showing content instantly');
                 contentSpan.textContent = content;
                 messageDiv.classList.remove('typing');
-                setTimeout(() => {
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }, 100);
+                if (!skipScroll) {
+                    setTimeout(() => {
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 100);
+                }
                 return msgId;
             }
 
@@ -2935,10 +2911,12 @@ Total conversations: ${conversations.length}
                     contentSpan.classList.remove('typewriter');
                     messageDiv.classList.remove('typing');
                     
-                    // Final scroll to ensure everything is visible
-                    setTimeout(() => {
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }, 100);
+                    // Final scroll to ensure everything is visible (only if not skipped)
+                    if (!skipScroll) {
+                        setTimeout(() => {
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }, 100);
+                    }
                 }
             }
             
@@ -3306,7 +3284,7 @@ Total conversations: ${conversations.length}
                 <div class="conversation-item ${conv.id === currentConversationId ? 'active' : ''}" 
                      onclick="loadConversation('${conv.id}')">
                     <div class="conversation-title">${conv.title || 'Untitled Conversation'}</div>
-                    <div class="conversation-preview">${conv.preview || 'No preview available'}</div>
+                    ${conv.preview ? `<div class="conversation-preview">${conv.preview}</div>` : ''}
                     <div class="conversation-time">${formatTime(conv.updated_at || conv.lastUpdated)}</div>
                     <div class="conversation-actions">
                         <button class="delete-conversation" onclick="deleteConversation('${conv.id}', event)" title="Delete conversation">
@@ -3378,7 +3356,7 @@ Message ID counter: ${messageIdCounter}`;
                     const response = await fetch('/api/conversations');
                     const data = await response.json();
                     
-                    if (data.success && data.conversations.length > 0) {
+                    if (response.ok && data.conversations && data.conversations.length > 0) {
                         // Export each conversation
                         for (const conv of data.conversations) {
                             await exportConversation(conv.id);

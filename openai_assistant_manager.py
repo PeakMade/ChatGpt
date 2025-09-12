@@ -297,11 +297,57 @@ You are knowledgeable, friendly, and always aim to be as helpful as possible."""
                 "timing": {
                     "total_flow_time": total_flow_time,
                     "run_time": run_result.get("total_time", 0)
+                },
+                "message_ids": {
+                    "user_message_id": user_msg_result["message_id"],
+                    "assistant_message_id": assistant_msg_result["message_id"]
                 }
             }
             
         except Exception as e:
             print(f"❌ Error in complete_chat_flow: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    def list_messages(self, thread_id: str) -> Dict:
+        """List messages from a thread for conversation restoration"""
+        try:
+            print(f"📋 Listing messages from thread: {thread_id}")
+            
+            messages = self.client.beta.threads.messages.list(
+                thread_id=thread_id,
+                order="asc"  # Get messages in chronological order (oldest first)
+            )
+            
+            message_list = []
+            for message in messages.data:
+                message_content = ""
+                if message.content and len(message.content) > 0:
+                    # Handle text content
+                    if hasattr(message.content[0], 'text') and message.content[0].text:
+                        message_content = message.content[0].text.value
+                
+                message_list.append({
+                    "id": message.id,
+                    "role": message.role,
+                    "content": [{"text": {"value": message_content}}],
+                    "created_at": message.created_at,
+                    "assistant_id": getattr(message, 'assistant_id', None),
+                    "run_id": getattr(message, 'run_id', None)
+                })
+            
+            print(f"✅ Retrieved {len(message_list)} messages from thread")
+            return {
+                "success": True,
+                "messages": message_list,
+                "thread_id": thread_id,
+                "total": len(message_list)
+            }
+            
+        except Exception as e:
+            print(f"❌ Error listing messages from thread {thread_id}: {e}")
             return {
                 "success": False,
                 "error": str(e)

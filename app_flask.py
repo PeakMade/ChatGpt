@@ -15,6 +15,15 @@ import json
 
 # Removed Azure Key Vault integration - using environment variables instead
 
+# Import OpenAI Assistant Manager for thread-based conversations
+try:
+    from openai_assistant_manager import OpenAIAssistantManager
+    ASSISTANT_MANAGER_AVAILABLE = True
+    print("✅ OpenAI Assistant Manager imported successfully")
+except ImportError as e:
+    ASSISTANT_MANAGER_AVAILABLE = False
+    print(f"⚠️ OpenAI Assistant Manager not available: {e}")
+
 # Configuration
 import config
 
@@ -30,7 +39,12 @@ app = Flask(__name__)
 # Use a consistent secret key for development, secure random for production
 app.secret_key = config.SECRET_KEY
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400 * 365  # 1 year
+
+@app.before_request
+def make_session_permanent():
+    """Make all sessions permanent to extend conversation persistence"""
+    session.permanent = True
 
 def get_api_key():
     """Get API key from environment variables or return None for user input"""
@@ -47,6 +61,40 @@ def get_api_key():
     
     # No valid key found, require user input
     return None
+
+def get_or_create_user_id():
+    """Get or create a unique user ID for session management"""
+    # Check for test user_id in URL (for debugging/testing)
+    test_user_id = request.args.get('user_id')
+    if test_user_id and test_user_id in ['3d261fbb-1066-4db2-8339-00c287325f6b', 'b895109e-5ce3-494f-a3e5-c829d41f6b2c']:
+        session['user_id'] = test_user_id
+        print(f"🔍 DEBUG: Using test user_id from URL: {session['user_id']}")
+    elif 'user_id' not in session or session['user_id'] == 'default_user' or not session['user_id']:
+        # Generate new user ID
+        session['user_id'] = str(uuid.uuid4())
+        print(f"🆕 Generated new user_id: {session['user_id']}")
+    else:
+        print(f"🔍 DEBUG: Using existing user_id: {session['user_id']}")
+    
+    return session['user_id']
+
+def get_or_create_assistant_manager(api_key):
+    """Get or create OpenAI Assistant Manager for thread-based conversations"""
+    if not ASSISTANT_MANAGER_AVAILABLE:
+        raise Exception("OpenAI Assistant Manager not available")
+    
+    if not api_key:
+        raise Exception("API key required for Assistant Manager")
+    
+    # Create a new assistant manager instance each time with the provided API key
+    # (Don't store in session as it contains the API key)
+    try:
+        assistant_manager = OpenAIAssistantManager(api_key)
+        print("🤖 Created new OpenAI Assistant Manager")
+        return assistant_manager
+    except Exception as e:
+        print(f"❌ Failed to create assistant manager: {e}")
+        raise
 
 def get_openai_client(api_key):
     """Initialize OpenAI client with API key"""
@@ -387,12 +435,24 @@ def api_key_status():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Handle chat messages with conversation callbacks"""
+    """Handle chat messages with conversation callbacks using thread_id and user_id"""
     try:
         data = request.get_json()
+        print(f"🔍 DEBUG: Received data: {data}")
+        
         user_message = data.get('message', '').strip()
         user_api_key = data.get('api_key', '').strip()
+        thread_id = data.get('thread_id') or ''  # Handle None case
+        thread_id = thread_id.strip() if thread_id else ''  # Safe strip
         conversation_id = data.get('conversation_id', session.get('conversation_id'))
+        
+        print(f"🔍 DEBUG: user_message: {user_message}")
+        print(f"🔍 DEBUG: thread_id: {thread_id}")
+        print(f"🔍 DEBUG: conversation_id: {conversation_id}")
+        
+        # Get or create user ID for session management
+        user_id = get_or_create_user_id()
+        print(f"🔍 DEBUG: user_id: {user_id}")
         
         # Smart API key handling - check environment variables first
         secure_api_key = get_api_key()
@@ -409,7 +469,22 @@ def chat():
         if not api_key:
             return jsonify({'error': 'Please enter your OpenAI API key'}), 400
         
-        # Initialize or get conversation
+        # Get or create OpenAI Assistant Manager
+        try:
+            assistant_manager = get_or_create_assistant_manager(api_key)
+        except Exception as e:
+            print(f"❌ Failed to initialize assistant manager: {e}")
+            # Fallback to basic chat completion API
+            return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id)
+        
+        # Use OpenAI thread_id if provided, otherwise create new thread
+        if thread_id and thread_id.startswith('thread_'):
+            print(f"🧵 Using existing OpenAI thread: {thread_id}")
+        else:
+            print("🆕 Creating new OpenAI thread")
+            thread_id = None  # Will be created by assistant manager
+        
+        # Initialize conversation if needed (for session storage)
         if not conversation_id:
             conversation_id = str(uuid.uuid4())
             session['conversation_id'] = conversation_id
@@ -417,10 +492,107 @@ def chat():
         # Update session API key
         session['api_key'] = api_key
         
-        # Get existing conversation history
+        # Store conversation metadata in session (but messages will be in OpenAI threads)
         if 'conversations' not in session:
             session['conversations'] = {}
         
+        if conversation_id not in session['conversations']:
+            session['conversations'][conversation_id] = {
+                'id': conversation_id,
+                'thread_id': thread_id,  # Store OpenAI thread_id
+                'user_id': user_id,      # Store user_id
+                'created_at': datetime.now().isoformat(),
+                'title': user_message[:50] + ('...' if len(user_message) > 50 else ''),
+                'updated_at': datetime.now().isoformat(),
+                'message_count': 0
+            }
+        
+        # Execute the optimal OpenAI chat flow with thread management
+        print("🤖 Executing optimal OpenAI Assistants API flow...")
+        
+        try:
+            # Use Assistant Manager for thread-based conversation
+            result = assistant_manager.complete_chat_flow(
+                user_message=user_message,
+                thread_id=thread_id
+            )
+            
+            # Extract thread_id from result
+            if result and 'thread_id' in result:
+                new_thread_id = result['thread_id']
+                session['conversations'][conversation_id]['thread_id'] = new_thread_id
+                session['conversations'][conversation_id]['updated_at'] = datetime.now().isoformat()
+                session['conversations'][conversation_id]['message_count'] += 2  # user + assistant
+                
+                print(f"✅ Thread-based chat completed. Thread ID: {new_thread_id}")
+                
+                # Save session
+                session.modified = True
+                
+                return jsonify({
+                    'user_message': user_message,
+                    'ai_response': result.get('response', 'No response received'),
+                    'thread_id': new_thread_id,
+                    'user_id': user_id,
+                    'conversation_id': conversation_id,
+                    'timestamp': datetime.now().isoformat(),
+                    'message_ids': result.get('message_ids', {})
+                })
+            else:
+                raise Exception("Invalid response from Assistant Manager")
+                
+        except Exception as e:
+            print(f"❌ Thread-based chat failed: {e}")
+            # Fallback to basic chat completion
+            return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id)
+        
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id):
+    """Fallback to basic chat completion when Assistant Manager fails"""
+    try:
+        print("🔄 Using fallback chat completion API")
+        
+        # Get conversation history from session
+        conversation_messages = []
+        conversations = session.get('conversations', {})
+        print(f"🔍 DEBUG: Available conversations: {list(conversations.keys())}")
+        print(f"🔍 DEBUG: Looking for conversation_id: {conversation_id}")
+        
+        if conversation_id and conversation_id in conversations:
+            conversation = conversations[conversation_id]
+            stored_messages = conversation.get('messages', [])
+            print(f"🔍 DEBUG: Found {len(stored_messages)} stored messages")
+            conversation_messages = [{"role": msg["role"], "content": msg["content"]} for msg in stored_messages if "role" in msg and "content" in msg]
+        else:
+            print("🔍 DEBUG: No existing conversation found, starting fresh")
+        
+        # Add current user message
+        conversation_messages.append({"role": "user", "content": user_message})
+        print(f"🔍 DEBUG: Total messages for API call: {len(conversation_messages)}")
+        
+        # Get AI response using basic completion
+        ai_response = get_chat_response_with_conversation(api_key, conversation_messages)
+        
+        # Store messages in session
+        user_msg = {
+            "role": "user",
+            "content": user_message,
+            "timestamp": datetime.now().isoformat(),
+            "id": str(uuid.uuid4())
+        }
+        
+        ai_msg = {
+            "role": "assistant", 
+            "content": ai_response,
+            "timestamp": datetime.now().isoformat(),
+            "id": str(uuid.uuid4())
+        }
+        
+        # Update session
+        if 'conversations' not in session:
+            session['conversations'] = {}
         if conversation_id not in session['conversations']:
             session['conversations'][conversation_id] = {
                 'id': conversation_id,
@@ -430,32 +602,8 @@ def chat():
                 'updated_at': datetime.now().isoformat()
             }
         
-        # Add user message to conversation
-        user_msg = {
-            "role": "user",
-            "content": user_message,
-            "timestamp": datetime.now().isoformat(),
-            "id": str(uuid.uuid4())
-        }
-        session['conversations'][conversation_id]['messages'].append(user_msg)
-        
-        # Prepare messages for OpenAI API with conversation history
-        conversation_messages = session['conversations'][conversation_id]['messages']
-        
-        # Get AI response with full conversation context
-        ai_response = get_chat_response_with_conversation(api_key, conversation_messages)
-        
-        # Add AI response to conversation
-        ai_msg = {
-            "role": "assistant", 
-            "content": ai_response,
-            "timestamp": datetime.now().isoformat(),
-            "id": str(uuid.uuid4())
-        }
-        session['conversations'][conversation_id]['messages'].append(ai_msg)
+        session['conversations'][conversation_id]['messages'].extend([user_msg, ai_msg])
         session['conversations'][conversation_id]['updated_at'] = datetime.now().isoformat()
-        
-        # Save session
         session.modified = True
         
         return jsonify({
@@ -463,77 +611,154 @@ def chat():
             'ai_response': ai_response,
             'timestamp': datetime.now().isoformat(),
             'conversation_id': conversation_id,
+            'user_id': user_id,
             'message_ids': {
                 'user': user_msg['id'],
                 'assistant': ai_msg['id']
-            }
+            },
+            'fallback': True
         })
         
     except Exception as e:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
+        print(f"❌ Fallback chat also failed: {e}")
+        return jsonify({'error': f'Chat error: {str(e)}'}), 500
 
-@app.route('/conversations', methods=['GET'])
+@app.route('/api/conversations', methods=['GET'])
 def get_conversations():
-    """Get all conversations - mimics OpenAI conversation API"""
+    """Get all conversations - includes thread_id and user_id for proper callback management"""
     try:
+        user_id = get_or_create_user_id()
         conversations = session.get('conversations', {})
         conversation_list = []
         
         for conv_id, conv_data in conversations.items():
+            # Generate preview from messages
+            preview_text = ""  # Empty by default, no "New conversation"
+            messages = conv_data.get('messages', [])
+            if messages:
+                # Use the first user message as preview
+                for msg in messages:
+                    if msg.get('role') == 'user' and msg.get('content'):
+                        content = msg.get('content', '').strip()
+                        preview_text = content[:80] + ('...' if len(content) > 80 else '')
+                        break
+            
             conversation_summary = {
                 'id': conv_id,
                 'title': conv_data.get('title', 'Untitled Conversation'),
                 'created_at': conv_data.get('created_at'),
                 'updated_at': conv_data.get('updated_at'),
-                'message_count': len(conv_data.get('messages', [])),
-                'last_message': conv_data.get('messages', [])[-1] if conv_data.get('messages') else None
+                'message_count': conv_data.get('message_count', len(messages)),
+                'thread_id': conv_data.get('thread_id'),  # Include OpenAI thread_id
+                'user_id': conv_data.get('user_id', user_id),  # Include user_id
+                'last_message': messages[-1] if messages else None,
+                'preview': preview_text  # Add actual preview text
             }
             conversation_list.append(conversation_summary)
         
         # Sort by updated_at (most recent first)
-        conversation_list.sort(key=lambda x: x['updated_at'], reverse=True)
+        conversation_list.sort(key=lambda x: x.get('updated_at', ''), reverse=True)
         
         return jsonify({
             'conversations': conversation_list,
-            'total': len(conversation_list)
+            'total': len(conversation_list),
+            'user_id': user_id  # Include current user_id in response
         })
         
     except Exception as e:
         return jsonify({'error': f'Failed to retrieve conversations: {str(e)}'}), 500
 
-@app.route('/conversations/<conversation_id>', methods=['GET'])
+@app.route('/api/conversations/<conversation_id>', methods=['GET'])
 def get_conversation_by_id(conversation_id):
-    """Get specific conversation by ID - mimics OpenAI conversation API"""
+    """Get specific conversation by ID - handles both thread-based and fallback conversations"""
     try:
+        user_id = get_or_create_user_id()
         conversations = session.get('conversations', {})
         
         if conversation_id not in conversations:
             return jsonify({'error': 'Conversation not found'}), 404
         
         conversation = conversations[conversation_id]
+        thread_id = conversation.get('thread_id')
+        
+        # For now, use session-stored messages since we don't have API key access here
+        # In the future, we could retrieve messages from threads if API key is available
+        messages = conversation.get('messages', [])
+        if thread_id:
+            print(f"ℹ️ Conversation has thread ID {thread_id} but using session messages")
         
         return jsonify({
             'id': conversation_id,
             'title': conversation.get('title', 'Untitled Conversation'),
             'created_at': conversation.get('created_at'),
             'updated_at': conversation.get('updated_at'),
-            'messages': conversation.get('messages', []),
-            'message_count': len(conversation.get('messages', []))
+            'messages': messages,
+            'message_count': conversation.get('message_count', len(messages)),
+            'thread_id': thread_id,
+            'user_id': conversation.get('user_id', user_id)
         })
         
     except Exception as e:
         return jsonify({'error': f'Failed to retrieve conversation: {str(e)}'}), 500
 
-@app.route('/conversations/<conversation_id>/messages', methods=['GET'])
+@app.route('/api/conversations/<conversation_id>/messages', methods=['GET'])
 def get_conversation_messages(conversation_id):
-    """Get messages for a specific conversation"""
+    """Get messages for a specific conversation - handles thread-based messages"""
     try:
+        user_id = get_or_create_user_id()
         conversations = session.get('conversations', {})
         
         if conversation_id not in conversations:
             return jsonify({'error': 'Conversation not found'}), 404
         
-        messages = conversations[conversation_id].get('messages', [])
+        conversation = conversations[conversation_id]
+        thread_id = conversation.get('thread_id')
+        
+        # Default to session-stored messages
+        messages = conversation.get('messages', [])
+        
+        # If we have a thread_id and API key, try to get messages from OpenAI thread
+        if thread_id and thread_id.startswith('thread_'):
+            api_key = get_api_key()
+            if api_key and ASSISTANT_MANAGER_AVAILABLE:
+                try:
+                    print(f"🧵 Retrieving messages from OpenAI thread: {thread_id}")
+                    assistant_manager = get_or_create_assistant_manager(api_key)
+                    thread_messages = assistant_manager.list_messages(thread_id)
+                    
+                    if thread_messages and 'messages' in thread_messages:
+                        # Convert OpenAI thread messages to our format
+                        formatted_messages = []
+                        for msg in thread_messages['messages']:  # Messages already in chronological order (asc)
+                            formatted_msg = {
+                                'id': msg.get('id', str(uuid.uuid4())),
+                                'role': msg.get('role', 'assistant'),
+                                'content': msg.get('content', [{}])[0].get('text', {}).get('value', '') if msg.get('content') else '',
+                                'timestamp': msg.get('created_at', datetime.now().isoformat()),
+                                'created_at': msg.get('created_at', datetime.now().isoformat())
+                            }
+                            formatted_messages.append(formatted_msg)
+                        
+                        messages = formatted_messages
+                        print(f"✅ Retrieved {len(messages)} messages from OpenAI thread")
+                    else:
+                        print("⚠️ No messages found in OpenAI thread, using session messages")
+                        
+                except Exception as e:
+                    print(f"⚠️ Failed to retrieve thread messages: {e}, using session messages")
+            else:
+                print("ℹ️ No API key available, using session messages")
+        
+        return jsonify({
+            'messages': messages,
+            'total': len(messages),
+            'conversation_id': conversation_id,
+            'thread_id': thread_id,
+            'user_id': conversation.get('user_id', user_id)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to retrieve messages: {str(e)}'}), 500
         
         return jsonify({
             'conversation_id': conversation_id,
@@ -544,7 +769,7 @@ def get_conversation_messages(conversation_id):
     except Exception as e:
         return jsonify({'error': f'Failed to retrieve messages: {str(e)}'}), 500
 
-@app.route('/conversations', methods=['POST'])
+@app.route('/api/conversations', methods=['POST'])
 def create_conversation():
     """Create a new conversation"""
     try:
@@ -577,7 +802,7 @@ def create_conversation():
     except Exception as e:
         return jsonify({'error': f'Failed to create conversation: {str(e)}'}), 500
 
-@app.route('/conversations/<conversation_id>', methods=['DELETE'])
+@app.route('/api/conversations/<conversation_id>', methods=['DELETE'])
 def delete_conversation(conversation_id):
     """Delete a conversation"""
     try:
@@ -600,7 +825,7 @@ def delete_conversation(conversation_id):
     except Exception as e:
         return jsonify({'error': f'Failed to delete conversation: {str(e)}'}), 500
 
-@app.route('/conversations/<conversation_id>/switch', methods=['POST'])
+@app.route('/api/conversations/<conversation_id>/switch', methods=['POST'])
 def switch_conversation(conversation_id):
     """Switch to a different conversation"""
     try:
@@ -678,4 +903,4 @@ def get_messages():
 
 if __name__ == '__main__':
     # For local development
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5001)))
