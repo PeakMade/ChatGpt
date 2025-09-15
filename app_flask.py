@@ -8,6 +8,7 @@ import openai
 from datetime import datetime
 import uuid
 import os
+import time
 from typing import List, Dict, Any
 import PyPDF2
 import io
@@ -825,20 +826,109 @@ def delete_conversation(conversation_id):
     except Exception as e:
         return jsonify({'error': f'Failed to delete conversation: {str(e)}'}), 500
 
+@app.route('/api/conversations/search', methods=['GET'])
+def search_conversations():
+    """Search conversations by title or content"""
+    try:
+        query = request.args.get('q', '').strip().lower()
+        if not query:
+            return jsonify({'conversations': []})
+        
+        conversations = session.get('conversations', {})
+        matching_conversations = []
+        
+        for conv_id, conversation in conversations.items():
+            # Search in title
+            title = conversation.get('title', '').lower()
+            if query in title:
+                matching_conversations.append({
+                    'id': conv_id,
+                    'title': conversation.get('title', 'Untitled'),
+                    'preview': conversation.get('preview', ''),
+                    'thread_id': conversation.get('thread_id'),
+                    'lastUpdated': conversation.get('updated_at', conversation.get('created_at')),
+                    'message_count': conversation.get('message_count', 0)
+                })
+                continue
+            
+            # Search in messages if available
+            messages = conversation.get('messages', [])
+            for message in messages:
+                content = message.get('content', '').lower()
+                if query in content:
+                    matching_conversations.append({
+                        'id': conv_id,
+                        'title': conversation.get('title', 'Untitled'),
+                        'preview': conversation.get('preview', ''),
+                        'thread_id': conversation.get('thread_id'),
+                        'lastUpdated': conversation.get('updated_at', conversation.get('created_at')),
+                        'message_count': conversation.get('message_count', 0)
+                    })
+                    break  # Only add once per conversation
+        
+        # Sort by last updated (most recent first)
+        matching_conversations.sort(key=lambda x: x.get('lastUpdated', ''), reverse=True)
+        
+        return jsonify({
+            'conversations': matching_conversations,
+            'query': query,
+            'total': len(matching_conversations)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Search failed: {str(e)}'}), 500
+
 @app.route('/api/conversations/<conversation_id>/switch', methods=['POST'])
 def switch_conversation(conversation_id):
-    """Switch to a different conversation"""
+    """Switch to a different conversation with proper thread and session handling"""
     try:
         conversations = session.get('conversations', {})
         
         if conversation_id not in conversations:
             return jsonify({'error': 'Conversation not found'}), 404
         
+        conversation = conversations[conversation_id]
+        
+        # Update session with conversation context
         session['conversation_id'] = conversation_id
+        session['messages'] = conversation.get('messages', [])
+        
+        # Handle thread_id if available
+        thread_id = conversation.get('thread_id')
+        if thread_id and thread_id.startswith('thread_'):
+            # Verify thread still exists and get fresh messages from OpenAI
+            api_key = get_api_key()
+            if api_key and ASSISTANT_MANAGER_AVAILABLE:
+                try:
+                    assistant_manager = get_or_create_assistant_manager(api_key)
+                    thread_messages = assistant_manager.list_messages(thread_id)
+                    
+                    if thread_messages and thread_messages.get('success'):
+                        # Update session with fresh OpenAI thread messages
+                        formatted_messages = []
+                        for msg in thread_messages['messages']:
+                            formatted_msg = {
+                                'id': msg.get('id', str(uuid.uuid4())),
+                                'role': msg.get('role', 'assistant'),
+                                'content': msg.get('content', [{}])[0].get('text', {}).get('value', '') if msg.get('content') else '',
+                                'timestamp': datetime.fromtimestamp(msg.get('created_at', time.time())).isoformat()
+                            }
+                            formatted_messages.append(formatted_msg)
+                        
+                        session['messages'] = formatted_messages
+                        print(f"✅ Refreshed conversation from OpenAI thread: {len(formatted_messages)} messages")
+                    else:
+                        print(f"⚠️ Failed to refresh from OpenAI thread, using stored messages")
+                        
+                except Exception as e:
+                    print(f"⚠️ Error refreshing from OpenAI thread: {e}, using stored messages")
+        
         session.modified = True
         
         return jsonify({
             'conversation_id': conversation_id,
+            'thread_id': thread_id,
+            'message_count': len(session.get('messages', [])),
             'message': 'Switched to conversation successfully'
         })
         
@@ -872,6 +962,35 @@ def upload_file():
         
     except Exception as e:
         return jsonify({'error': f'File processing error: {str(e)}'}), 500
+
+@app.route('/set-conversation-context', methods=['POST'])
+def set_conversation_context():
+    """Set conversation context in session from loaded conversation"""
+    try:
+        data = request.get_json()
+        messages = data.get('messages', [])
+        
+        # Convert frontend message format to session format
+        session_messages = []
+        for msg in messages:
+            session_msg = {
+                'id': msg.get('id', str(uuid.uuid4())),
+                'role': msg.get('role', 'user' if msg.get('isUser') else 'assistant'),
+                'content': msg.get('textContent', ''),
+                'timestamp': msg.get('timestamp', datetime.now().isoformat())
+            }
+            session_messages.append(session_msg)
+        
+        # Update session with conversation context
+        session['messages'] = session_messages
+        session.modified = True
+        
+        print(f"✅ Set conversation context with {len(session_messages)} messages")
+        return jsonify({'success': True, 'message_count': len(session_messages)})
+        
+    except Exception as e:
+        print(f"❌ Error setting conversation context: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/clear_chat', methods=['POST'])
 def clear_chat():

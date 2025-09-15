@@ -1749,6 +1749,7 @@ Total conversations: ${conversations.length}
                 id: currentConversationId,
                 title: title,
                 messages: messages,
+                thread_id: currentThreadId, // CRITICAL: Save the OpenAI thread_id
                 lastUpdated: Date.now(),
                 preview: firstUserMessage ? firstUserMessage.textContent.replace(/^(You|AI Assistant):\s*/, '').substring(0, 100) : 'No messages'
             };
@@ -1822,6 +1823,11 @@ Total conversations: ${conversations.length}
 
                         // CRITICAL: Sync localStorage conversation with backend session
                         syncConversationWithSession(conversation.messages);
+                        
+                        // Validate conversation consistency after loading
+                        setTimeout(() => {
+                            validateAndFixConversationState(conversationId);
+                        }, 100);
                     }
 
                     chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -1831,10 +1837,15 @@ Total conversations: ${conversations.length}
         }
 
         function syncConversationWithSession(messages) {
-            if (!messages || messages.length === 0) return;
+            if (!messages || messages.length === 0) {
+                console.log('ℹ️ No messages to sync with session');
+                return;
+            }
+            
+            console.log(`🔄 Syncing ${messages.length} messages with backend session...`);
             
             // Send conversation messages to backend to set up session context
-            fetch('/set-conversation-context', {
+            fetchWithTimeout('/set-conversation-context', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1842,8 +1853,17 @@ Total conversations: ${conversations.length}
                 body: JSON.stringify({
                     messages: messages
                 })
-            }).catch(error => {
-                console.error('Error syncing conversation with session:', error);
+            }, 30000)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log(`✅ Successfully synced ${data.message_count} messages with backend session`);
+                } else {
+                    console.warn('⚠️ Failed to sync conversation with session:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error syncing conversation with session:', error);
             });
         }
 
@@ -1865,6 +1885,176 @@ Total conversations: ${conversations.length}
                     }
                 });
             }
+        }
+
+        // ============================================================================
+        // CONVERSATION CONSISTENCY & DEBUGGING
+        // ============================================================================
+        
+        function validateConversationConsistency() {
+            console.log('🔍 CONVERSATION CONSISTENCY CHECK');
+            console.log('================================');
+            console.log('Current Conversation ID:', currentConversationId);
+            console.log('Current Thread ID:', currentThreadId);
+            console.log('LocalStorage Conversation ID:', localStorage.getItem('currentConversationId'));
+            console.log('LocalStorage Thread ID:', localStorage.getItem('currentThreadId'));
+            console.log('Total Conversations in localStorage:', conversations.length);
+            
+            const chatMessages = document.getElementById('chatMessages');
+            const displayedMessages = chatMessages.children.length;
+            console.log('Messages currently displayed:', displayedMessages);
+            
+            // Check if current conversation exists in localStorage
+            if (currentConversationId) {
+                const conversation = conversations.find(c => c.id === currentConversationId);
+                if (conversation) {
+                    console.log('✅ Current conversation found in localStorage');
+                    console.log('  - Title:', conversation.title);
+                    console.log('  - Stored messages:', conversation.messages ? conversation.messages.length : 0);
+                    console.log('  - Thread ID in data:', conversation.thread_id);
+                    console.log('  - Last updated:', new Date(conversation.lastUpdated));
+                } else {
+                    console.warn('⚠️ Current conversation NOT found in localStorage');
+                }
+            }
+            
+            console.log('================================');
+        }
+        
+        function validateAndFixConversationState(expectedConversationId) {
+            console.log('🔍 Validating conversation state...');
+            
+            // Check if current state matches expected
+            if (currentConversationId !== expectedConversationId) {
+                console.warn('⚠️ Conversation ID mismatch! Fixing...');
+                currentConversationId = expectedConversationId;
+                localStorage.setItem('currentConversationId', currentConversationId);
+            }
+            
+            // Ensure localStorage and session are in sync
+            const conversation = conversations.find(c => c.id === currentConversationId);
+            if (conversation) {
+                // Verify thread_id consistency
+                if (conversation.thread_id && conversation.thread_id !== currentThreadId) {
+                    console.log('🔧 Fixing thread_id consistency...');
+                    currentThreadId = conversation.thread_id;
+                    localStorage.setItem('currentThreadId', currentThreadId);
+                }
+                
+                // Verify message count consistency
+                const chatMessages = document.getElementById('chatMessages');
+                const displayedCount = chatMessages.children.length;
+                const storedCount = conversation.messages ? conversation.messages.length : 0;
+                
+                if (displayedCount !== storedCount) {
+                    console.warn(`⚠️ Message count mismatch: displayed=${displayedCount}, stored=${storedCount}`);
+                    // Re-sync if there's a mismatch
+                    syncConversationWithSession(conversation.messages);
+                }
+                
+                console.log('✅ Conversation state validated successfully');
+            } else {
+                console.error('❌ Conversation not found in localStorage!');
+            }
+        }
+
+        function testConversationHistory() {
+            console.log('🧪 CONVERSATION HISTORY TEST');
+            console.log('============================');
+            
+            // Test 1: Current state validation
+            console.log('📋 Current State:');
+            console.log('  - Conversation ID:', currentConversationId);
+            console.log('  - Thread ID:', currentThreadId);
+            console.log('  - Total conversations:', conversations.length);
+            
+            // Test 2: localStorage consistency
+            console.log('💾 localStorage State:');
+            console.log('  - Stored conversation ID:', localStorage.getItem('currentConversationId'));
+            console.log('  - Stored thread ID:', localStorage.getItem('currentThreadId'));
+            
+            // Test 3: Message consistency
+            const chatMessages = document.getElementById('chatMessages');
+            const displayedMessages = Array.from(chatMessages.children);
+            console.log('💬 Message State:');
+            console.log('  - Displayed messages:', displayedMessages.length);
+            
+            displayedMessages.forEach((msg, index) => {
+                const role = msg.getAttribute('data-role') || 'unknown';
+                const id = msg.getAttribute('data-message-id') || 'no-id';
+                const content = msg.textContent.substring(0, 50) + '...';
+                console.log(`    ${index + 1}. [${role}] ${id}: ${content}`);
+            });
+            
+            // Test 4: Conversation data integrity
+            if (currentConversationId) {
+                const conversation = conversations.find(c => c.id === currentConversationId);
+                if (conversation) {
+                    console.log('📂 Conversation Data:');
+                    console.log('  - Title:', conversation.title);
+                    console.log('  - Thread ID in data:', conversation.thread_id);
+                    console.log('  - Stored messages:', conversation.messages ? conversation.messages.length : 0);
+                    console.log('  - Last updated:', new Date(conversation.lastUpdated));
+                    
+                    // Check message consistency
+                    const storedCount = conversation.messages ? conversation.messages.length : 0;
+                    const displayedCount = displayedMessages.length;
+                    
+                    if (storedCount === displayedCount) {
+                        console.log('✅ Message count matches between storage and display');
+                    } else {
+                        console.warn(`⚠️ Message count mismatch: stored=${storedCount}, displayed=${displayedCount}`);
+                    }
+                } else {
+                    console.error('❌ Current conversation not found in localStorage!');
+                }
+            }
+            
+            console.log('============================');
+            return {
+                currentConversationId,
+                currentThreadId,
+                totalConversations: conversations.length,
+                displayedMessages: displayedMessages.length,
+                isConsistent: true // You can expand this logic
+            };
+        }
+
+        // Expose debugging functions globally for console access
+        window.debugConversations = {
+            test: testConversationHistory,
+            validate: validateConversationConsistency,
+            refresh: forceRefreshConversation,
+            list: () => {
+                console.log('📋 All Conversations:');
+                conversations.forEach((conv, index) => {
+                    console.log(`${index + 1}. ${conv.title} (${conv.id})`);
+                    console.log(`   Thread: ${conv.thread_id || 'none'}`);
+                    console.log(`   Messages: ${conv.messages ? conv.messages.length : 0}`);
+                    console.log(`   Updated: ${new Date(conv.lastUpdated)}`);
+                });
+                return conversations;
+            }
+        };
+
+        function forceRefreshConversation() {
+            if (!currentConversationId) {
+                console.warn('⚠️ No current conversation to refresh');
+                return;
+            }
+            
+            console.log('🔄 Force refreshing current conversation...');
+            validateConversationConsistency();
+            
+            // Try to reload from backend first
+            loadConversationFromBackend(currentConversationId).then(success => {
+                if (!success) {
+                    console.log('Backend reload failed, trying localStorage...');
+                    loadConversation(currentConversationId);
+                }
+                console.log('✅ Conversation refresh completed');
+                validateConversationConsistency();
+            });
         }
 
         // ============================================================================
@@ -2058,14 +2248,14 @@ Total conversations: ${conversations.length}
         async function searchConversations(query) {
             try {
                 console.log('🌐 Making API request to search conversations:', query);
-                const response = await fetch(`/api/conversations/search?q=${encodeURIComponent(query)}`);
+                const response = await fetchWithTimeout(`/api/conversations/search?q=${encodeURIComponent(query)}`, {}, 30000);
                 const data = await response.json();
                 
                 console.log('📡 API response:', data);
                 
-                if (response.ok && data.results) {
-                    console.log('✅ Search successful, results:', data.results);
-                    return data.results || [];
+                if (response.ok && data.conversations) {
+                    console.log('✅ Search successful, results:', data.conversations);
+                    return data.conversations || [];
                 } else {
                     console.warn(`⚠️ Search failed: ${data.error || 'Search endpoint not available'}`);
                     return [];
@@ -2543,19 +2733,32 @@ Total conversations: ${conversations.length}
                         currentConversationId = savedConversationId;
                         console.log('🔄 Restored previous conversation ID:', currentConversationId);
                         
-                        // Load the saved conversation messages
+                        // Load the saved conversation messages and validate state
                         loadConversation(currentConversationId);
+                        
+                        // Additional validation after a short delay
+                        setTimeout(() => {
+                            validateAndFixConversationState(currentConversationId);
+                        }, 200);
                     } else {
                         // Saved conversation no longer exists, create new one
                         currentConversationId = generateConversationId();
                         localStorage.setItem('currentConversationId', currentConversationId);
                         console.log('🆔 Saved conversation not found, generated new ID:', currentConversationId);
+                        
+                        // Clear invalid thread_id since conversation doesn't exist
+                        currentThreadId = null;
+                        localStorage.removeItem('currentThreadId');
                     }
                 } else {
                     // No saved conversation, create new one
                     currentConversationId = generateConversationId();
                     localStorage.setItem('currentConversationId', currentConversationId);
                     console.log('🆔 Generated initial conversation ID:', currentConversationId);
+                    
+                    // Clear thread_id for new conversation
+                    currentThreadId = null;
+                    localStorage.removeItem('currentThreadId');
                 }
                 
                 // Ensure we have a welcome message only for truly new conversations
@@ -2761,7 +2964,7 @@ Total conversations: ${conversations.length}
                         uploaded_content: uploadedContent,
                         preferred_model: preferredModel
                     })
-                }, 30000); // 30 second timeout
+                }, 75000); // Increased to 75 seconds (backend has 60s + buffer)
 
                 const data = await response.json();
 
