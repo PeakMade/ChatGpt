@@ -1832,6 +1832,14 @@ Total conversations: ${conversations.length}
 
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                     renderConversationsList();
+                    
+                    // Focus on message input for immediate typing
+                    setTimeout(() => {
+                        const messageInput = document.getElementById('messageInput');
+                        if (messageInput) {
+                            messageInput.focus();
+                        }
+                    }, 150);
                 }
             });
         }
@@ -2155,9 +2163,15 @@ Total conversations: ${conversations.length}
                         
                         console.log('✅ Messages loaded successfully');
                         
-                        // For loaded conversations, scroll to top to show first message
+                        // Always scroll to bottom for conversation continuation
                         setTimeout(() => {
-                            chatMessages.scrollTop = 0;
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                            
+                            // Focus on message input for immediate typing
+                            const messageInput = document.getElementById('messageInput');
+                            if (messageInput) {
+                                messageInput.focus();
+                            }
                         }, 100);
                     } else {
                         console.log('ℹ️ No messages found for this conversation');
@@ -2770,6 +2784,17 @@ Total conversations: ${conversations.length}
                         </div>
                     `;
                 }
+                
+                // Always scroll to bottom after initialization
+                setTimeout(() => {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    
+                    // Focus on message input for immediate typing
+                    const messageInput = document.getElementById('messageInput');
+                    if (messageInput) {
+                        messageInput.focus();
+                    }
+                }, 200);
             }
             
             renderConversationsList();
@@ -2988,13 +3013,8 @@ Total conversations: ${conversations.length}
                         const chatMessages = document.getElementById('chatMessages');
                         const messageCount = chatMessages.children.length;
                         
-                        if (messageCount <= 2) {
-                            // If this is the first exchange, don't scroll - keep first message visible at top
-                            chatMessages.scrollTop = 0;
-                        } else {
-                            // For subsequent messages, scroll to bottom to show latest exchange
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
-                        }
+                        // Always scroll to bottom to resume conversation properly
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
                     }, 100); // Small delay to ensure DOM is updated
                     
                     // Update current conversation ID from backend response
