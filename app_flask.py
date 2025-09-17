@@ -134,18 +134,19 @@ def get_chat_response_with_conversation(api_key, conversation_messages, uploaded
         system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
         
 Key information about your knowledge:
-- Current date: September 3, 2025
+- Current date: September 17, 2025
 - You have access to information and events through 2025
 - You can discuss recent developments, technologies, and current events
 - When discussing dates or timelines, remember it's currently 2025
 
 CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
+- limit the response to no more than 300 words
 - Always use double line breaks between paragraphs for maximum readability
 - Start each major section with a clear heading using ### or **bold** formatting
 - Use proper indentation and spacing for nested content
 - When providing multiple steps or points, use bullet points (•) or numbered lists (1., 2., 3.)
 - Add blank lines before and after all lists, code blocks, or formulas
-- Break up long explanations into short, digestible paragraphs (3-4 sentences max)
+- Break up long explanations into short, digestible paragraphs (1-2 sentences max)
 - Use proper line spacing: paragraph → blank line → paragraph → blank line
 - For processes or instructions, use numbered steps with descriptions
 - For lists of features or benefits, use bullet points with clear spacing
@@ -180,8 +181,8 @@ You can refer back to previous messages in this conversation. Use the conversati
         response = client.chat.completions.create(
             model="gpt-4o-mini",  # Latest efficient model with better performance
             messages=openai_messages,
-            max_tokens=1500,  # Increased for more detailed responses
-            temperature=0.7
+            max_tokens=300,  # Increased for more detailed responses
+            temperature=0.2
         )
         
         return response.choices[0].message.content
@@ -225,18 +226,19 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
         
 Key information about your knowledge:
-- Current date: August 27, 2025
+- Current date: September 17, 2025
 - You have access to information and events through 2025
 - You can discuss recent developments, technologies, and current events
 - When discussing dates or timelines, remember it's currently 2025
 
 CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
+- limit the response to no more than 300 words
 - Always use double line breaks between paragraphs for maximum readability
 - Start each major section with a clear heading using ### or **bold** formatting
 - Use proper indentation and spacing for nested content
 - When providing multiple steps or points, use bullet points (•) or numbered lists (1., 2., 3.)
 - Add blank lines before and after all lists, code blocks, or formulas
-- Break up long explanations into short, digestible paragraphs (3-4 sentences max)
+- Break up long explanations into short, digestible paragraphs (1-2 sentences max)
 - Use proper line spacing: paragraph → blank line → paragraph → blank line
 - For processes or instructions, use numbered steps with descriptions
 - For lists of features or benefits, use bullet points with clear spacing
@@ -290,8 +292,8 @@ Please provide helpful, accurate, and up-to-date responses with excellent format
         response = client.chat.completions.create(
             model="gpt-4o-mini",  # Latest efficient model with better performance
             messages=openai_messages,
-            max_tokens=1500,  # Increased for more detailed responses
-            temperature=0.7
+            max_tokens=300,  # Increased for more detailed responses
+            temperature=0.2
         )
         
         return response.choices[0].message.content
@@ -320,18 +322,19 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
         
 Key information about your knowledge:
-- Current date: August 27, 2025
+- Current date: September 17, 2025
 - You have access to information and events through 2025
 - You can discuss recent developments, technologies, and current events
 - When discussing dates or timelines, remember it's currently 2025
 
 CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
+- limit the response to no more than 300 words
 - Always use double line breaks between paragraphs for maximum readability
 - Start each major section with a clear heading using ### or **bold** formatting
 - Use proper indentation and spacing for nested content
 - When providing multiple steps or points, use bullet points (•) or numbered lists (1., 2., 3.)
 - Add blank lines before and after all lists, code blocks, or formulas
-- Break up long explanations into short, digestible paragraphs (3-4 sentences max)
+- Break up long explanations into short, digestible paragraphs (1-2 sentences max)
 - Use proper line spacing: paragraph → blank line → paragraph → blank line
 - For processes or instructions, use numbered steps with descriptions
 - For lists of features or benefits, use bullet points with clear spacing
@@ -385,8 +388,8 @@ Please provide helpful, accurate, and up-to-date responses with excellent format
         response = client.chat.completions.create(
             model="gpt-4o-mini",  # Latest efficient model with better performance
             messages=openai_messages,
-            max_tokens=1500,
-            temperature=0.7
+            max_tokens=300,
+            temperature=0.2
         )
         
         return response.choices[0].message.content
