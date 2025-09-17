@@ -166,7 +166,7 @@ You can refer back to previous messages in this conversation. Use the conversati
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions."
+                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions. Respond in 300 words or less."
             })
         
         # Add conversation history (only user and assistant messages)
@@ -278,7 +278,7 @@ Please provide helpful, accurate, and up-to-date responses with excellent format
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions."
+                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions. Respond in 300 words or less."
             })
         
         # Add conversation history
@@ -374,7 +374,7 @@ Please provide helpful, accurate, and up-to-date responses with excellent format
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions."
+                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions. Respond in 300 words or less."
             })
         
         # Add conversation history
