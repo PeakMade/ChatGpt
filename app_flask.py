@@ -3,6 +3,8 @@ AI BOOST - Flask Application
 A modern, responsive web application that replicates ChatGPT functionality using Flask
 """
 
+# Internal note: App running optimally - Sept 2025
+
 from flask import Flask, render_template, request, jsonify, session
 import openai
 from datetime import datetime
