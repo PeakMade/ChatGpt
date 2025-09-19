@@ -352,3 +352,32 @@ You are knowledgeable, friendly, and always aim to be as helpful as possible."""
                 "success": False,
                 "error": str(e)
             }
+
+    def delete_thread(self, thread_id: str) -> Dict:
+        """Delete a thread and all its messages"""
+        try:
+            if not thread_id:
+                return {
+                    "success": False,
+                    "error": "Thread ID is required"
+                }
+            
+            print(f"🗑️ Deleting OpenAI thread: {thread_id}")
+            
+            # Delete the thread using OpenAI API
+            deleted_thread = self.client.beta.threads.delete(thread_id)
+            
+            print(f"✅ Successfully deleted thread: {thread_id}")
+            return {
+                "success": True,
+                "thread_id": thread_id,
+                "deleted": deleted_thread.deleted if hasattr(deleted_thread, 'deleted') else True
+            }
+            
+        except Exception as e:
+            print(f"❌ Error deleting thread {thread_id}: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "thread_id": thread_id
+            }

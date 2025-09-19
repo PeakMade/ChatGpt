@@ -484,10 +484,16 @@ def chat():
             return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id)
         
         # Use OpenAI thread_id if provided, otherwise create new thread
-        if thread_id and thread_id.startswith('thread_'):
+        # Skip existing thread if this is a fresh conversation (after clear_chat)
+        fresh_conversation = len(session.get('messages', [])) == 0 and not session.get('conversations', {})
+        
+        if thread_id and thread_id.startswith('thread_') and not fresh_conversation:
             print(f"🧵 Using existing OpenAI thread: {thread_id}")
         else:
-            print("🆕 Creating new OpenAI thread")
+            if fresh_conversation:
+                print("🆕 Creating new OpenAI thread (fresh conversation)")
+            else:
+                print("🆕 Creating new OpenAI thread")
             thread_id = None  # Will be created by assistant manager
         
         # Initialize conversation if needed (for session storage)
@@ -810,12 +816,30 @@ def create_conversation():
 
 @app.route('/api/conversations/<conversation_id>', methods=['DELETE'])
 def delete_conversation(conversation_id):
-    """Delete a conversation"""
+    """Delete a conversation and its OpenAI thread"""
     try:
         conversations = session.get('conversations', {})
         
         if conversation_id not in conversations:
             return jsonify({'error': 'Conversation not found'}), 404
+        
+        conversation = conversations[conversation_id]
+        thread_id = conversation.get('thread_id')
+        
+        # Delete OpenAI thread if it exists
+        if thread_id and thread_id.startswith('thread_'):
+            api_key = get_api_key()
+            if api_key and ASSISTANT_MANAGER_AVAILABLE:
+                try:
+                    assistant_manager = get_or_create_assistant_manager(api_key)
+                    # Delete the thread from OpenAI
+                    result = assistant_manager.delete_thread(thread_id)
+                    if result and result.get('success'):
+                        print(f"✅ Deleted OpenAI thread: {thread_id}")
+                    else:
+                        print(f"⚠️ Failed to delete OpenAI thread: {thread_id}")
+                except Exception as e:
+                    print(f"⚠️ Error deleting OpenAI thread {thread_id}: {e}")
         
         del conversations[conversation_id]
         session['conversations'] = conversations
@@ -999,11 +1023,70 @@ def set_conversation_context():
 
 @app.route('/clear_chat', methods=['POST'])
 def clear_chat():
-    """Clear chat history"""
+    """Clear chat history and create fresh thread"""
     session['messages'] = []
     session['conversation_id'] = str(uuid.uuid4())
+    
+    # Clear any stored OpenAI thread_id to force new thread creation
+    if 'current_thread_id' in session:
+        del session['current_thread_id']
+    
+    # Clear all conversations to prevent OpenAI thread reconnection
+    session['conversations'] = {}
+    
     session.modified = True
+    print("🧹 Cleared chat: messages, conversation_id, thread_id, and all conversations")
     return jsonify({'success': True})
+
+@app.route('/api/conversations/clear-all', methods=['POST'])
+def clear_all_conversations():
+    """Clear all conversations and delete their OpenAI threads"""
+    try:
+        conversations = session.get('conversations', {})
+        api_key = get_api_key()
+        
+        # Delete all OpenAI threads
+        if api_key and ASSISTANT_MANAGER_AVAILABLE:
+            try:
+                assistant_manager = get_or_create_assistant_manager(api_key)
+                deleted_count = 0
+                
+                for conversation in conversations.values():
+                    thread_id = conversation.get('thread_id')
+                    if thread_id and thread_id.startswith('thread_'):
+                        try:
+                            result = assistant_manager.delete_thread(thread_id)
+                            if result and result.get('success'):
+                                deleted_count += 1
+                                print(f"✅ Deleted OpenAI thread: {thread_id}")
+                            else:
+                                print(f"⚠️ Failed to delete OpenAI thread: {thread_id}")
+                        except Exception as e:
+                            print(f"⚠️ Error deleting OpenAI thread {thread_id}: {e}")
+                
+                print(f"🧹 Deleted {deleted_count} OpenAI threads")
+                
+            except Exception as e:
+                print(f"⚠️ Error initializing assistant manager for cleanup: {e}")
+        
+        # Clear all session data
+        session['conversations'] = {}
+        session['messages'] = []
+        session['conversation_id'] = str(uuid.uuid4())
+        
+        if 'current_thread_id' in session:
+            del session['current_thread_id']
+        
+        session.modified = True
+        
+        return jsonify({
+            'success': True,
+            'message': 'All conversations cleared successfully',
+            'cleared_count': len(conversations)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to clear conversations: {str(e)}'}), 500
 
 @app.route('/get_messages')
 def get_messages():
