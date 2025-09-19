@@ -27,6 +27,15 @@ except ImportError as e:
     ASSISTANT_MANAGER_AVAILABLE = False
     print(f"⚠️ OpenAI Assistant Manager not available: {e}")
 
+# Import News Fetcher for current information
+try:
+    from news_fetcher import NewsFetcher, get_current_news_context
+    NEWS_FETCHER_AVAILABLE = True
+    print("✅ News Fetcher imported successfully")
+except ImportError as e:
+    NEWS_FETCHER_AVAILABLE = False
+    print(f"⚠️ News Fetcher not available: {e}")
+
 # Configuration
 import config
 
@@ -132,14 +141,24 @@ def get_chat_response_with_conversation(api_key, conversation_messages, uploaded
         # Prepare messages for OpenAI
         openai_messages = []
         
-        # Add system prompt with 2025 knowledge context
-        system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
+        # Add system prompt with 2025 knowledge context and current news
+        current_news = ""
+        if NEWS_FETCHER_AVAILABLE:
+            try:
+                current_news = get_current_news_context(5)  # Get 5 latest news articles
+            except Exception as e:
+                print(f"⚠️ Failed to fetch news context: {e}")
+                current_news = ""
+        
+        system_prompt = f"""You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
         
 Key information about your knowledge:
-- Current date: September 17, 2025
+- Current date: September 19, 2025
 - You have access to information and events through 2025
 - You can discuss recent developments, technologies, and current events
 - When discussing dates or timelines, remember it's currently 2025
+
+{current_news if current_news else ""}
 
 CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
 - limit the response to no more than 300 words
@@ -1107,6 +1126,37 @@ def get_messages():
             'messages': [],
             'api_key': ''
         })
+
+@app.route('/api/news', methods=['GET'])
+def get_news():
+    """Get current news headlines"""
+    try:
+        if not NEWS_FETCHER_AVAILABLE:
+            return jsonify({'error': 'News service not available'}), 503
+        
+        category = request.args.get('category')
+        country = request.args.get('country', 'us')
+        query = request.args.get('q')
+        
+        if query:
+            # Search for specific news
+            from news_fetcher import news_fetcher
+            articles = news_fetcher.search_news(query)
+        else:
+            # Get top headlines
+            from news_fetcher import news_fetcher
+            articles = news_fetcher.fetch_latest_news(country=country, category=category)
+        
+        return jsonify({
+            'articles': articles[:10],  # Limit to 10 articles
+            'total': len(articles),
+            'query': query,
+            'category': category,
+            'country': country
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch news: {str(e)}'}), 500
 
 @app.route('/favicon.ico')
 def favicon():
