@@ -111,8 +111,8 @@ def get_openai_client(api_key):
 
 def select_optimal_model(user_message, user_preference=None):
     """
-    Enhanced 4-tier intelligent model selection:
-    GPT-4o → GPT-4-turbo → GPT-4 → GPT-4o-mini
+    Enhanced intelligent model selection with Azure-compatible model names:
+    GPT-4 → GPT-4o-mini (stable models only)
     """
     if user_preference and user_preference != "auto":
         return user_preference
@@ -120,7 +120,7 @@ def select_optimal_model(user_message, user_preference=None):
     # Convert to lowercase for analysis
     message_lower = user_message.lower()
     
-    # Ultra-complex keywords (GPT-4o - most advanced)
+    # Ultra-complex keywords (use GPT-4 - most reliable)
     ultra_complex_keywords = [
         'comprehensive analysis', 'strategic evaluation', 'multi-factor analysis',
         'sophisticated approach', 'advanced strategy', 'in-depth research',
@@ -128,76 +128,57 @@ def select_optimal_model(user_message, user_preference=None):
         'full analysis', 'extensive research', 'complex reasoning'
     ]
     
-    # High-complexity keywords (GPT-4-turbo - enhanced performance)
+    # High-complexity keywords (use GPT-4)
     high_complex_keywords = [
         'analyze', 'analysis', 'compare', 'comparison', 'evaluate', 'assessment',
         'research', 'investigate', 'examine', 'study', 'review', 'critique',
         'strategy', 'plan', 'design', 'architect', 'structure', 'framework'
     ]
     
-    # Technical/programming keywords (GPT-4-turbo)
+    # Technical/programming keywords (use GPT-4)
     technical_keywords = [
         'code', 'programming', 'debug', 'algorithm', 'function', 'method',
         'script', 'database', 'api', 'software', 'development', 'technical',
         'engineering', 'system', 'architecture', 'implementation', 'optimize'
     ]
     
-    # Creative/writing keywords (GPT-4-turbo)
+    # Creative/writing keywords (use GPT-4)
     creative_keywords = [
         'write', 'essay', 'story', 'article', 'blog', 'content', 'marketing',
         'creative', 'brainstorm', 'ideas', 'proposal', 'presentation', 'report',
         'business plan', 'strategy document', 'whitepaper', 'copy'
     ]
     
-    # Mathematical/scientific keywords (GPT-4-turbo)
+    # Mathematical/scientific keywords (use GPT-4)
     math_science_keywords = [
         'calculate', 'formula', 'equation', 'mathematics', 'statistics',
         'data analysis', 'scientific', 'research', 'experiment', 'hypothesis',
         'theory', 'model', 'simulation', 'probability', 'logic'
     ]
     
-    # Professional/business keywords (GPT-4)
+    # Professional/business keywords (use GPT-4)
     professional_keywords = [
         'legal', 'contract', 'policy', 'compliance', 'regulation', 'law',
         'professional', 'business', 'corporate', 'finance', 'investment',
         'recommendation', 'advice', 'consultation', 'formal'
     ]
     
-    # TIER 1: Ultra-complex queries → GPT-4o (most advanced)
-    for keyword in ultra_complex_keywords:
+    # Combine all complex keywords for GPT-4 selection
+    all_complex_keywords = (ultra_complex_keywords + high_complex_keywords + technical_keywords + 
+                           creative_keywords + math_science_keywords + professional_keywords)
+    
+    # Check for any complexity triggers → use GPT-4
+    for keyword in all_complex_keywords:
         if keyword in message_lower:
-            print(f"🚀 GPT-4o SELECTED → Ultra-complex keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
-            return "gpt-4o"
-    
-    # Very long messages → GPT-4o
-    if len(user_message) > 500:
-        print(f"📏 GPT-4o SELECTED → Very long message ({len(user_message)} chars): \"{user_message[:50]}...\"")
-        return "gpt-4o"
-    
-    # TIER 2: High-complexity queries → GPT-4-turbo (enhanced)
-    turbo_keywords = high_complex_keywords + technical_keywords + creative_keywords + math_science_keywords
-    for keyword in turbo_keywords:
-        if keyword in message_lower:
-            print(f"⚡ GPT-4-turbo SELECTED → High-complexity keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
-            return "gpt-4-turbo"
-    
-    # Long messages → GPT-4-turbo
-    if len(user_message) > 300:
-        print(f"📏 GPT-4-turbo SELECTED → Long message ({len(user_message)} chars): \"{user_message[:50]}...\"")
-        return "gpt-4-turbo"
-    
-    # TIER 3: Standard complexity queries → GPT-4 (reliable original)
-    for keyword in professional_keywords:
-        if keyword in message_lower:
-            print(f"🧠 GPT-4 SELECTED → Professional keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
+            print(f"🧠 GPT-4 SELECTED → Complex keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
             return "gpt-4"
     
-    # Medium messages → GPT-4
+    # Check message length → longer messages use GPT-4
     if len(user_message) > 150:
-        print(f"📏 GPT-4 SELECTED → Medium message ({len(user_message)} chars): \"{user_message[:50]}...\"")
+        print(f"📏 GPT-4 SELECTED → Long message ({len(user_message)} chars): \"{user_message[:50]}...\"")
         return "gpt-4"
     
-    # Complex question patterns → GPT-4
+    # Check for complex question patterns → use GPT-4
     complex_patterns = [
         'how does', 'why does', 'what are the implications',
         'explain how', 'explain why', 'what would happen if',
@@ -210,7 +191,7 @@ def select_optimal_model(user_message, user_preference=None):
             print(f"🧠 GPT-4 SELECTED → Complex pattern '{pattern}' in: \"{user_message[:50]}...\"")
             return "gpt-4"
     
-    # TIER 4: Simple queries → GPT-4o-mini (cost optimization)
+    # Default to GPT-4o-mini for simple queries (cost optimization)
     print(f"💰 GPT-4o-mini SELECTED → Simple query: \"{user_message[:50]}...\"")
     return "gpt-4o-mini"
 
