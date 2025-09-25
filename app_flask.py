@@ -617,7 +617,9 @@ def chat():
         print(f"🚀 FINAL DECISION: {selected_model.upper()}")
         print("=" * 60)
         
-        # Get or create OpenAI Assistant Manager
+        # Use lightweight chat completion for Azure deployment (avoid memory issues)
+        print("🔄 Using lightweight chat completion for Azure compatibility")
+        return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, selected_model)
         try:
             assistant_manager = get_or_create_assistant_manager(api_key)
             # Set the model for this request
@@ -700,14 +702,17 @@ def chat():
     except Exception as e:
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
-def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id):
+def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, selected_model=None):
     """Fallback to basic chat completion when Assistant Manager fails"""
     try:
         print("🔄 Using fallback chat completion API")
         
-        # Smart model selection for fallback
-        selected_model = select_optimal_model(user_message)
-        print(f"🧠 Model selected for fallback: {selected_model}")
+        # Use provided model or select one
+        if not selected_model:
+            selected_model = select_optimal_model(user_message)
+            print(f"🧠 Model selected for fallback: {selected_model}")
+        else:
+            print(f"🔄 Using pre-selected model for fallback: {selected_model}")
         
         # Get conversation history from session
         conversation_messages = []
