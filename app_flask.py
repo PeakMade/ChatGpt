@@ -109,7 +109,112 @@ def get_openai_client(api_key):
     except Exception as e:
         return None
 
-def get_chat_response_with_conversation(api_key, conversation_messages, uploaded_content=""):
+def select_optimal_model(user_message, user_preference=None):
+    """
+    Enhanced 4-tier intelligent model selection:
+    GPT-4o → GPT-4-turbo → GPT-4 → GPT-4o-mini
+    """
+    if user_preference and user_preference != "auto":
+        return user_preference
+    
+    # Convert to lowercase for analysis
+    message_lower = user_message.lower()
+    
+    # Ultra-complex keywords (GPT-4o - most advanced)
+    ultra_complex_keywords = [
+        'comprehensive analysis', 'strategic evaluation', 'multi-factor analysis',
+        'sophisticated approach', 'advanced strategy', 'in-depth research',
+        'thorough investigation', 'detailed assessment', 'complete evaluation',
+        'full analysis', 'extensive research', 'complex reasoning'
+    ]
+    
+    # High-complexity keywords (GPT-4-turbo - enhanced performance)
+    high_complex_keywords = [
+        'analyze', 'analysis', 'compare', 'comparison', 'evaluate', 'assessment',
+        'research', 'investigate', 'examine', 'study', 'review', 'critique',
+        'strategy', 'plan', 'design', 'architect', 'structure', 'framework'
+    ]
+    
+    # Technical/programming keywords (GPT-4-turbo)
+    technical_keywords = [
+        'code', 'programming', 'debug', 'algorithm', 'function', 'method',
+        'script', 'database', 'api', 'software', 'development', 'technical',
+        'engineering', 'system', 'architecture', 'implementation', 'optimize'
+    ]
+    
+    # Creative/writing keywords (GPT-4-turbo)
+    creative_keywords = [
+        'write', 'essay', 'story', 'article', 'blog', 'content', 'marketing',
+        'creative', 'brainstorm', 'ideas', 'proposal', 'presentation', 'report',
+        'business plan', 'strategy document', 'whitepaper', 'copy'
+    ]
+    
+    # Mathematical/scientific keywords (GPT-4-turbo)
+    math_science_keywords = [
+        'calculate', 'formula', 'equation', 'mathematics', 'statistics',
+        'data analysis', 'scientific', 'research', 'experiment', 'hypothesis',
+        'theory', 'model', 'simulation', 'probability', 'logic'
+    ]
+    
+    # Professional/business keywords (GPT-4)
+    professional_keywords = [
+        'legal', 'contract', 'policy', 'compliance', 'regulation', 'law',
+        'professional', 'business', 'corporate', 'finance', 'investment',
+        'recommendation', 'advice', 'consultation', 'formal'
+    ]
+    
+    # TIER 1: Ultra-complex queries → GPT-4o (most advanced)
+    for keyword in ultra_complex_keywords:
+        if keyword in message_lower:
+            print(f"🚀 GPT-4o SELECTED → Ultra-complex keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
+            return "gpt-4o"
+    
+    # Very long messages → GPT-4o
+    if len(user_message) > 500:
+        print(f"📏 GPT-4o SELECTED → Very long message ({len(user_message)} chars): \"{user_message[:50]}...\"")
+        return "gpt-4o"
+    
+    # TIER 2: High-complexity queries → GPT-4-turbo (enhanced)
+    turbo_keywords = high_complex_keywords + technical_keywords + creative_keywords + math_science_keywords
+    for keyword in turbo_keywords:
+        if keyword in message_lower:
+            print(f"⚡ GPT-4-turbo SELECTED → High-complexity keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
+            return "gpt-4-turbo"
+    
+    # Long messages → GPT-4-turbo
+    if len(user_message) > 300:
+        print(f"📏 GPT-4-turbo SELECTED → Long message ({len(user_message)} chars): \"{user_message[:50]}...\"")
+        return "gpt-4-turbo"
+    
+    # TIER 3: Standard complexity queries → GPT-4 (reliable original)
+    for keyword in professional_keywords:
+        if keyword in message_lower:
+            print(f"🧠 GPT-4 SELECTED → Professional keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
+            return "gpt-4"
+    
+    # Medium messages → GPT-4
+    if len(user_message) > 150:
+        print(f"📏 GPT-4 SELECTED → Medium message ({len(user_message)} chars): \"{user_message[:50]}...\"")
+        return "gpt-4"
+    
+    # Complex question patterns → GPT-4
+    complex_patterns = [
+        'how does', 'why does', 'what are the implications',
+        'explain how', 'explain why', 'what would happen if',
+        'pros and cons', 'advantages and disadvantages',
+        'step by step', 'detailed explanation'
+    ]
+    
+    for pattern in complex_patterns:
+        if pattern in message_lower:
+            print(f"🧠 GPT-4 SELECTED → Complex pattern '{pattern}' in: \"{user_message[:50]}...\"")
+            return "gpt-4"
+    
+    # TIER 4: Simple queries → GPT-4o-mini (cost optimization)
+    print(f"💰 GPT-4o-mini SELECTED → Simple query: \"{user_message[:50]}...\"")
+    return "gpt-4o-mini"
+
+def get_chat_response_with_conversation(api_key, conversation_messages, selected_model=None, uploaded_content=""):
     """Get response from OpenAI API with full conversation context"""
     if not api_key:
         return "Error: No OpenAI API key provided."
@@ -117,6 +222,20 @@ def get_chat_response_with_conversation(api_key, conversation_messages, uploaded
     try:
         # Clean the API key of any whitespace
         api_key = api_key.strip()
+        
+        # Get the user's message for model selection
+        user_message = ""
+        if conversation_messages:
+            # Get the last user message
+            for msg in reversed(conversation_messages):
+                if msg.get("role") == "user":
+                    user_message = msg.get("content", "")
+                    break
+        
+        # Select optimal model based on message complexity (if not provided)
+        if not selected_model:
+            selected_model = select_optimal_model(user_message)
+        
         try:
             # Method 1: Basic client creation
             client = openai.OpenAI(api_key=api_key)
@@ -132,29 +251,35 @@ def get_chat_response_with_conversation(api_key, conversation_messages, uploaded
         # Prepare messages for OpenAI
         openai_messages = []
         
-        # Add system prompt with 2025 knowledge context
-        system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
-        
-Key information about your knowledge:
-- Current date: September 17, 2025
-- You have access to information and events through 2025
-- You can discuss recent developments, technologies, and current events
-- When discussing dates or timelines, remember it's currently 2025
+        # Add enhanced system prompt for current knowledge optimization  
+        system_prompt = """You are AI BOOST, a specialized AI assistant with extensive real estate and business knowledge through April 2024.
 
-CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
-- limit the response to no more than 300 words
-- Always use double line breaks between paragraphs for maximum readability
-- Start each major section with a clear heading using ### or **bold** formatting
-- Use proper indentation and spacing for nested content
-- When providing multiple steps or points, use bullet points (•) or numbered lists (1., 2., 3.)
-- Add blank lines before and after all lists, code blocks, or formulas
-- Break up long explanations into short, digestible paragraphs (1-2 sentences max)
-- Use proper line spacing: paragraph → blank line → paragraph → blank line
-- For processes or instructions, use numbered steps with descriptions
-- For lists of features or benefits, use bullet points with clear spacing
-- Ensure each response has excellent visual hierarchy and white space
-- Use indentation for sub-points and nested information
-- Always separate different topics with clear visual breaks
+**CURRENT KNOWLEDGE STRATEGY:**
+- Current date: September 25, 2025
+- When asked about "current" information, use your most recent training data intelligently
+- Apply known market cycles, economic patterns, and established trends to current context
+- Provide practical insights based on logical progression from your training data
+
+**EXPERTISE AREAS:**
+• Real estate market analysis and investment strategies
+• Economic factors and financing considerations
+• Technology trends affecting real estate
+• Policy and regulatory impacts
+• Market cycles and seasonal patterns
+
+**RESPONSE APPROACH:**
+- Assume normal market progression from April 2024 baseline
+- Factor in typical economic and seasonal cycles  
+- Consider ongoing trends like remote work impact, technology adoption
+- Focus on actionable, practical guidance
+- Be direct about knowledge limitations only when critical
+
+**FORMATTING STANDARDS:**
+- Maximum 300 words per response
+- Double line breaks between paragraphs  
+- **Bold section headings**
+- Bullet points (•) for clarity
+- Maintain excellent readability and spacing
 
 CONVERSATION CONTEXT:
 You can refer back to previous messages in this conversation. Use the conversation history to provide contextual and relevant responses that build upon earlier exchanges."""
@@ -179,9 +304,9 @@ You can refer back to previous messages in this conversation. Use the conversati
                     "content": msg["content"]
                 })
         
-        # Get response from OpenAI using GPT-4o-mini
+        # Get response from OpenAI using intelligently selected model
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Latest efficient model with better performance
+            model=selected_model,  # Use intelligently selected model
             messages=openai_messages,
             max_tokens=300,  # Increased for more detailed responses
             temperature=0.2
@@ -209,6 +334,19 @@ def get_chat_response(api_key, messages, uploaded_content=""):
     try:
         # Clean the API key of any whitespace
         api_key = api_key.strip()
+        
+        # Get the user's message for model selection
+        user_message = ""
+        if messages:
+            # Get the last user message
+            for msg in reversed(messages):
+                if msg.get("role") == "user":
+                    user_message = msg.get("content", "")
+                    break
+        
+        # Select optimal model based on message complexity
+        selected_model = select_optimal_model(user_message)
+        
         try:
             # Method 1: Basic client creation
             client = openai.OpenAI(api_key=api_key)
@@ -290,9 +428,9 @@ Please provide helpful, accurate, and up-to-date responses with excellent format
                 "content": msg["content"]
             })
         
-        # Get response from OpenAI using GPT-4o-mini
+        # Get response from OpenAI using intelligently selected model
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Latest efficient model with better performance
+            model=selected_model,  # Use intelligently selected model
             messages=openai_messages,
             max_tokens=300,  # Increased for more detailed responses
             temperature=0.2
@@ -315,6 +453,18 @@ Please provide helpful, accurate, and up-to-date responses with excellent format
 def get_chat_response_legacy(api_key, messages, uploaded_content=""):
     """Simplified OpenAI API approach"""
     try:
+        # Get the user's message for model selection
+        user_message = ""
+        if messages:
+            # Get the last user message
+            for msg in reversed(messages):
+                if msg.get("role") == "user":
+                    user_message = msg.get("content", "")
+                    break
+        
+        # Select optimal model based on message complexity
+        selected_model = select_optimal_model(user_message)
+        
         # Create client with explicit API key
         client = openai.OpenAI(api_key=api_key)
         # Prepare messages for OpenAI
@@ -386,9 +536,9 @@ Please provide helpful, accurate, and up-to-date responses with excellent format
                 "content": msg["content"]
             })
         
-        # Use modern API call with GPT-4o-mini
+        # Use modern API call with intelligently selected model
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Latest efficient model with better performance
+            model=selected_model,  # Use intelligently selected model
             messages=openai_messages,
             max_tokens=300,
             temperature=0.2
@@ -442,6 +592,10 @@ def api_key_status():
 @app.route('/chat', methods=['POST'])
 def chat():
     """Handle chat messages with conversation callbacks using thread_id and user_id"""
+    print("\n" + "="*80)
+    print("🎯 NEW CHAT REQUEST RECEIVED!")
+    print("="*80)
+    
     try:
         data = request.get_json()
         print(f"🔍 DEBUG: Received data: {data}")
@@ -475,9 +629,18 @@ def chat():
         if not api_key:
             return jsonify({'error': 'Please enter your OpenAI API key'}), 400
         
+        # Smart model selection with debug output
+        print("=" * 60)
+        print(f"🤖 PROCESSING MESSAGE: \"{user_message[:80]}{'...' if len(user_message) > 80 else ''}\"")
+        selected_model = select_optimal_model(user_message)
+        print(f"🚀 FINAL DECISION: {selected_model.upper()}")
+        print("=" * 60)
+        
         # Get or create OpenAI Assistant Manager
         try:
             assistant_manager = get_or_create_assistant_manager(api_key)
+            # Set the model for this request
+            assistant_manager.model = selected_model
         except Exception as e:
             print(f"❌ Failed to initialize assistant manager: {e}")
             # Fallback to basic chat completion API
@@ -542,7 +705,8 @@ def chat():
                     'user_id': user_id,
                     'conversation_id': conversation_id,
                     'timestamp': datetime.now().isoformat(),
-                    'message_ids': result.get('message_ids', {})
+                    'message_ids': result.get('message_ids', {}),
+                    'model_used': selected_model  # Send model used to frontend
                 })
             else:
                 raise Exception("Invalid response from Assistant Manager")
@@ -559,6 +723,10 @@ def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id):
     """Fallback to basic chat completion when Assistant Manager fails"""
     try:
         print("🔄 Using fallback chat completion API")
+        
+        # Smart model selection for fallback
+        selected_model = select_optimal_model(user_message)
+        print(f"🧠 Model selected for fallback: {selected_model}")
         
         # Get conversation history from session
         conversation_messages = []
@@ -578,8 +746,8 @@ def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id):
         conversation_messages.append({"role": "user", "content": user_message})
         print(f"🔍 DEBUG: Total messages for API call: {len(conversation_messages)}")
         
-        # Get AI response using basic completion
-        ai_response = get_chat_response_with_conversation(api_key, conversation_messages)
+        # Get AI response using basic completion with selected model
+        ai_response = get_chat_response_with_conversation(api_key, conversation_messages, selected_model)
         
         # Store messages in session
         user_msg = {
@@ -622,6 +790,7 @@ def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id):
                 'user': user_msg['id'],
                 'assistant': ai_msg['id']
             },
+            'model_used': selected_model,  # Send model used to frontend
             'fallback': True
         })
         
