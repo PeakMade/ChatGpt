@@ -109,13 +109,61 @@ def get_openai_client(api_key):
     except Exception as e:
         return None
 
+def should_use_web_search(user_message):
+    """
+    Determine if the user's message requires web search for current information
+    """
+    if not user_message:
+        return False
+        
+    message_lower = user_message.lower()
+    
+    # Keywords that suggest need for current/real-time information
+    current_info_keywords = [
+        'current', 'latest', 'recent', 'today', 'now', 'this week', 'this month', 'this year',
+        'up to date', 'breaking', 'news', '2025', 'september 2025', 'december 2025',
+        'market trends', 'current prices', 'recent data', 'latest stats',
+        'what\'s happening', 'current events', 'recent developments',
+        'who is the president', 'current president', 'president of', 'who is president'
+    ]
+    
+    # Real estate specific current info keywords
+    real_estate_current_keywords = [
+        'interest rates', 'mortgage rates', 'housing market', 'home prices',
+        'inventory levels', 'market conditions', 'sales data', 'median price',
+        'market report', 'housing statistics'
+    ]
+    
+    # Check for current info triggers
+    all_keywords = current_info_keywords + real_estate_current_keywords
+    
+    for keyword in all_keywords:
+        if keyword in message_lower:
+            print(f"🌐 WEB SEARCH TRIGGERED → Keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
+            return True
+    
+    # Check for question patterns that might need current info
+    current_patterns = [
+        'what is the current', 'what are the latest', 'how is the market',
+        'what\'s the current', 'current state of', 'latest trends in',
+        'who is the current', 'who is president'
+    ]
+    
+    for pattern in current_patterns:
+        if pattern in message_lower:
+            print(f"🌐 WEB SEARCH TRIGGERED → Pattern '{pattern}' detected in: \"{user_message[:50]}...\"")
+            return True
+    
+    print(f"📚 NO WEB SEARCH → Using training data for: \"{user_message[:50]}...\"")
+    return False
+
 def select_optimal_model(user_message, user_preference=None):
     """
     Enhanced intelligent model selection with Azure-compatible model names:
-    GPT-4 → GPT-4o-mini (stable models only)
+    GPT-4 → GPT-4o (stable models only)
     """
     if user_preference and user_preference != "auto":
-        return user_preference
+        return "gpt-4o"
     
     # Convert to lowercase for analysis
     message_lower = user_message.lower()
@@ -171,7 +219,7 @@ def select_optimal_model(user_message, user_preference=None):
     for keyword in all_complex_keywords:
         if keyword in message_lower:
             print(f"🧠 GPT-4 SELECTED → Complex keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
-            return "gpt-4"
+            return "gpt-4o"
     
     # Check message length → longer messages use GPT-4
     if len(user_message) > 150:
@@ -189,11 +237,11 @@ def select_optimal_model(user_message, user_preference=None):
     for pattern in complex_patterns:
         if pattern in message_lower:
             print(f"🧠 GPT-4 SELECTED → Complex pattern '{pattern}' in: \"{user_message[:50]}...\"")
-            return "gpt-4"
+            return "gpt-4o"
     
     # Default to GPT-4o-mini for simple queries (cost optimization)
     print(f"💰 GPT-4o-mini SELECTED → Simple query: \"{user_message[:50]}...\"")
-    return "gpt-4o-mini"
+    return "gpt-4o"
 
 def get_chat_response_with_conversation(api_key, conversation_messages, selected_model=None, uploaded_content=""):
     """Get response from OpenAI API with full conversation context"""
@@ -233,37 +281,25 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
         openai_messages = []
         
         # Add enhanced system prompt for current knowledge optimization  
-        system_prompt = """You are AI BOOST, a specialized AI assistant with extensive real estate and business knowledge through April 2024.
+        current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
+        system_prompt = f"""You are AI BOOST, a real estate and business AI assistant with web search capabilities.
 
-**CURRENT KNOWLEDGE STRATEGY:**
-- Current date: September 25, 2025
-- When asked about "current" information, use your most recent training data intelligently
-- Apply known market cycles, economic patterns, and established trends to current context
-- Provide practical insights based on logical progression from your training data
+**Core Guidelines:**
+- Maximum 280 words per response (leave room for full answers)
+- Use double line breaks between paragraphs
+- Bold headings (**Topic**) and bullet points (•) for clarity
+- Focus on actionable, practical insights
+- Apply market knowledge through logical progression from training data
 
-**EXPERTISE AREAS:**
-• Real estate market analysis and investment strategies
-• Economic factors and financing considerations
-• Technology trends affecting real estate
-• Policy and regulatory impacts
-• Market cycles and seasonal patterns
+**Current Information Access:**
+- Current context: {current_date}
+- When users ask for current/recent information, use web search to get up-to-date data
+- Combine your training knowledge with real-time search results for comprehensive answers
 
-**RESPONSE APPROACH:**
-- Assume normal market progression from April 2024 baseline
-- Factor in typical economic and seasonal cycles  
-- Consider ongoing trends like remote work impact, technology adoption
-- Focus on actionable, practical guidance
-- Be direct about knowledge limitations only when critical
+**Quick Reference:**
+Apply known market cycles, economic patterns, and established trends to current situations.
 
-**FORMATTING STANDARDS:**
-- Maximum 300 words per response
-- Double line breaks between paragraphs  
-- **Bold section headings**
-- Bullet points (•) for clarity
-- Maintain excellent readability and spacing
-
-CONVERSATION CONTEXT:
-You can refer back to previous messages in this conversation. Use the conversation history to provide contextual and relevant responses that build upon earlier exchanges."""
+You can reference previous conversation messages for context."""
 
         openai_messages.append({
             "role": "system",
@@ -285,15 +321,57 @@ You can refer back to previous messages in this conversation. Use the conversati
                     "content": msg["content"]
                 })
         
-        # Get response from OpenAI using intelligently selected model
-        response = client.chat.completions.create(
-            model=selected_model,  # Use intelligently selected model
-            messages=openai_messages,
-            max_tokens=300,  # Increased for more detailed responses
-            temperature=0.2
-        )
+        # DEBUG: Show messages being sent to OpenAI API
+        print("\n" + "🚀" * 30)
+        print("📤 MESSAGES BEING SENT TO OPENAI API:")
+        print("🚀" * 60)
+        for i, msg in enumerate(openai_messages):
+            role_emoji = "🧠" if msg["role"] == "system" else ("👤" if msg["role"] == "user" else "🤖")
+            content_preview = msg["content"][:100] + ("..." if len(msg["content"]) > 100 else "")
+            print(f"{role_emoji} Message {i+1} ({msg['role'].upper()}): {content_preview}")
+        print("🚀" * 60)
+        print(f"🎯 MODEL SELECTED: {selected_model}")
+        print(f"📊 TOTAL MESSAGES: {len(openai_messages)}")
+        print("🚀" * 60 + "\n")
         
-        return response.choices[0].message.content
+        # Get response from OpenAI using intelligently selected model
+        print(f"here2: {openai_messages}")
+        
+        # Check if we should use web search for current information
+        user_message = conversation_messages[-1]["content"] if conversation_messages else ""
+        needs_web_search = should_use_web_search(user_message)
+        
+        if needs_web_search:
+            print("🌐 ENABLING WEB SEARCH for current information")
+            # Use GPT-4o with web search capabilities using the correct API format
+            response = client.responses.create(
+                model="gpt-4o",
+                tools=[{"type": "web_search"}],
+                input=openai_messages,
+                temperature=0.2
+            )
+            # Extract response from the new API format
+            ai_response = response.output_text
+        else:
+            response = client.chat.completions.create(
+                model=selected_model,  # Use intelligently selected model
+                messages=openai_messages,
+                max_tokens=350,  # Increased for complete responses
+                temperature=0.2
+            )
+            # Extract response from standard format
+            ai_response = response.choices[0].message.content
+        
+        # DEBUG: Show response received from OpenAI API
+        print("\n" + "📥" * 30)
+        print("📥 RESPONSE RECEIVED FROM OPENAI API:")
+        print("📥" * 60)
+        print(f"🤖 AI RESPONSE: {ai_response}")
+        print(f"🎯 MODEL USED: {selected_model}")
+        print(f"📊 RESPONSE LENGTH: {len(ai_response)} characters")
+        print("📥" * 60 + "\n")
+        
+        return ai_response
     except openai.AuthenticationError as e:
         return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
     except openai.RateLimitError:
@@ -344,51 +422,34 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         openai_messages = []
         
         # Add system prompt with 2025 knowledge context
-        system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
-        
-Key information about your knowledge:
-- Current date: September 17, 2025
-- You have access to information and events through 2025
-- You can discuss recent developments, technologies, and current events
-- When discussing dates or timelines, remember it's currently 2025
+        current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
+        system_prompt = f"""You are AI BOOST, an advanced AI assistant with web search capabilities updated through 2025.
 
-CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
-- limit the response to no more than 300 words
-- Always use double line breaks between paragraphs for maximum readability
-- Start each major section with a clear heading using ### or **bold** formatting
-- Use proper indentation and spacing for nested content
-- When providing multiple steps or points, use bullet points (•) or numbered lists (1., 2., 3.)
-- Add blank lines before and after all lists, code blocks, or formulas
-- Break up long explanations into short, digestible paragraphs (1-2 sentences max)
-- Use proper line spacing: paragraph → blank line → paragraph → blank line
-- For processes or instructions, use numbered steps with descriptions
-- For lists of features or benefits, use bullet points with clear spacing
-- Ensure each response has excellent visual hierarchy and white space
-- Use indentation for sub-points and nested information
-- Always separate different topics with clear visual breaks
+**Key Info:**
+- Current date: {current_date}
+- Access to 2025 information and real-time web search for current data
+- Maximum 280 words per response (leave room for complete answers)
 
-SPACING EXAMPLE:
-### Main Topic
+**Current Information:**
+When users ask for current, recent, or up-to-date information, use web search to provide the latest data.
 
-This is a paragraph with good spacing.
+**Formatting (Follow Exactly):**
+- Double line breaks between paragraphs
+- **Bold headings** and bullet points (•)
+- Numbered lists (1., 2., 3.) for processes
+- Clear visual hierarchy with proper spacing
 
-This is another paragraph after a blank line.
+**Example Format:**
+### Topic
 
-1. First step in a process
-   - Sub-point with indentation
-   - Another sub-point
+Paragraph with good spacing.
 
-2. Second step with proper spacing
+Another paragraph after blank line.
 
-• Bullet point for features
-• Another bullet point
-• Third bullet point
+• Key point one
+• Key point two
 
-### Next Section
-
-New content starts here with proper separation.
-
-Please provide helpful, accurate, and up-to-date responses with excellent formatting and spacing."""
+Provide helpful, accurate responses with excellent formatting."""
 
         openai_messages.append({
             "role": "system",
@@ -409,15 +470,57 @@ Please provide helpful, accurate, and up-to-date responses with excellent format
                 "content": msg["content"]
             })
         
-        # Get response from OpenAI using intelligently selected model
-        response = client.chat.completions.create(
-            model=selected_model,  # Use intelligently selected model
-            messages=openai_messages,
-            max_tokens=300,  # Increased for more detailed responses
-            temperature=0.2
-        )
+        # DEBUG: Show messages being sent to OpenAI API
+        print("\n" + "🚀" * 30)
+        print("📤 MESSAGES BEING SENT TO OPENAI API (get_chat_response):")
+        print("🚀" * 60)
+        for i, msg in enumerate(openai_messages):
+            role_emoji = "🧠" if msg["role"] == "system" else ("👤" if msg["role"] == "user" else "🤖")
+            content_preview = msg["content"][:100] + ("..." if len(msg["content"]) > 100 else "")
+            print(f"{role_emoji} Message {i+1} ({msg['role'].upper()}): {content_preview}")
+        print("🚀" * 60)
+        print(f"🎯 MODEL SELECTED: {selected_model}")
+        print(f"📊 TOTAL MESSAGES: {len(openai_messages)}")
+        print("🚀" * 60 + "\n")
         
-        return response.choices[0].message.content
+        # Get response from OpenAI using intelligently selected model
+        print(f"here3: {openai_messages}")
+        
+        # Check if we should use web search for current information
+        user_message = messages[-1]["content"] if messages else ""
+        needs_web_search = should_use_web_search(user_message)
+        
+        if needs_web_search:
+            print("🌐 ENABLING WEB SEARCH for current information")
+            # Use GPT-4o with web search capabilities using the correct API format
+            response = client.responses.create(
+                model="gpt-4o",
+                tools=[{"type": "web_search"}],
+                input=openai_messages,
+                temperature=0.2
+            )
+            # Extract response from the new API format
+            ai_response = response.output_text
+        else:
+            response = client.chat.completions.create(
+                model=selected_model,  # Use intelligently selected model
+                messages=openai_messages,
+                max_tokens=350,  # Increased for complete responses
+                temperature=0.2
+            )
+            # Extract response from standard format
+            ai_response = response.choices[0].message.content
+        
+        # DEBUG: Show response received from OpenAI API
+        print("\n" + "📥" * 30)
+        print("📥 RESPONSE RECEIVED FROM OPENAI API (get_chat_response):")
+        print("📥" * 60)
+        print(f"🤖 AI RESPONSE: {ai_response}")
+        print(f"🎯 MODEL USED: {selected_model}")
+        print(f"📊 RESPONSE LENGTH: {len(ai_response)} characters")
+        print("📥" * 60 + "\n")
+        
+        return ai_response
     except openai.AuthenticationError as e:
         return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
     except openai.RateLimitError:
@@ -452,51 +555,34 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         openai_messages = []
         
         # Add system prompt with 2025 knowledge context
-        system_prompt = """You are AI BOOST, an advanced AI assistant with knowledge updated through 2025. 
-        
-Key information about your knowledge:
-- Current date: September 17, 2025
-- You have access to information and events through 2025
-- You can discuss recent developments, technologies, and current events
-- When discussing dates or timelines, remember it's currently 2025
+        current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
+        system_prompt = f"""You are AI BOOST, an advanced AI assistant with web search capabilities updated through 2025.
 
-CRITICAL FORMATTING REQUIREMENTS - FOLLOW THESE EXACTLY:
-- limit the response to no more than 300 words
-- Always use double line breaks between paragraphs for maximum readability
-- Start each major section with a clear heading using ### or **bold** formatting
-- Use proper indentation and spacing for nested content
-- When providing multiple steps or points, use bullet points (•) or numbered lists (1., 2., 3.)
-- Add blank lines before and after all lists, code blocks, or formulas
-- Break up long explanations into short, digestible paragraphs (1-2 sentences max)
-- Use proper line spacing: paragraph → blank line → paragraph → blank line
-- For processes or instructions, use numbered steps with descriptions
-- For lists of features or benefits, use bullet points with clear spacing
-- Ensure each response has excellent visual hierarchy and white space
-- Use indentation for sub-points and nested information
-- Always separate different topics with clear visual breaks
+**Key Info:**
+- Current date: {current_date}  
+- Access to 2025 information and real-time web search for current data
+- Maximum 280 words per response (leave room for complete answers)
 
-SPACING EXAMPLE:
-### Main Topic
+**Current Information:**
+When users ask for current, recent, or up-to-date information, use web search to provide the latest data.
 
-This is a paragraph with good spacing.
+**Formatting (Follow Exactly):**
+- Double line breaks between paragraphs
+- **Bold headings** and bullet points (•)
+- Numbered lists (1., 2., 3.) for processes
+- Clear visual hierarchy with proper spacing
 
-This is another paragraph after a blank line.
+**Example Format:**
+### Topic
 
-1. First step in a process
-   - Sub-point with indentation
-   - Another sub-point
+Paragraph with good spacing.
 
-2. Second step with proper spacing
+Another paragraph after blank line.
 
-• Bullet point for features
-• Another bullet point
-• Third bullet point
+• Key point one
+• Key point two
 
-### Next Section
-
-New content starts here with proper separation.
-
-Please provide helpful, accurate, and up-to-date responses with excellent formatting and spacing."""
+Provide helpful, accurate responses with excellent formatting."""
 
         openai_messages.append({
             "role": "system",
@@ -517,15 +603,57 @@ Please provide helpful, accurate, and up-to-date responses with excellent format
                 "content": msg["content"]
             })
         
-        # Use modern API call with intelligently selected model
-        response = client.chat.completions.create(
-            model=selected_model,  # Use intelligently selected model
-            messages=openai_messages,
-            max_tokens=300,
-            temperature=0.2
-        )
+        # DEBUG: Show messages being sent to OpenAI API
+        print("\n" + "🚀" * 30)
+        print("📤 MESSAGES BEING SENT TO OPENAI API (get_chat_response_legacy):")
+        print("🚀" * 60)
+        for i, msg in enumerate(openai_messages):
+            role_emoji = "🧠" if msg["role"] == "system" else ("👤" if msg["role"] == "user" else "🤖")
+            content_preview = msg["content"][:100] + ("..." if len(msg["content"]) > 100 else "")
+            print(f"{role_emoji} Message {i+1} ({msg['role'].upper()}): {content_preview}")
+        print("🚀" * 60)
+        print(f"🎯 MODEL SELECTED: {selected_model}")
+        print(f"📊 TOTAL MESSAGES: {len(openai_messages)}")
+        print("🚀" * 60 + "\n")
         
-        return response.choices[0].message.content
+        # Use modern API call with intelligently selected model
+        print(f"here: {openai_messages}")
+        
+        # Check if we should use web search for current information
+        user_message = messages[-1]["content"] if messages else ""
+        needs_web_search = should_use_web_search(user_message)
+        
+        if needs_web_search:
+            print("🌐 ENABLING WEB SEARCH for current information")
+            # Use GPT-4o with web search capabilities using the correct API format
+            response = client.responses.create(
+                model="gpt-4o",
+                tools=[{"type": "web_search"}],
+                input=openai_messages,
+                temperature=0.2
+            )
+            # Extract response from the new API format
+            ai_response = response.output_text
+        else:
+            response = client.chat.completions.create(
+                model=selected_model,  # Use intelligently selected model
+                messages=openai_messages,
+                max_tokens=350,
+                temperature=0.2
+            )
+            # Extract response from standard format
+            ai_response = response.choices[0].message.content
+        
+        # DEBUG: Show response received from OpenAI API
+        print("\n" + "📥" * 30)
+        print("📥 RESPONSE RECEIVED FROM OPENAI API (get_chat_response_legacy):")
+        print("📥" * 60)
+        print(f"🤖 AI RESPONSE: {ai_response}")
+        print(f"🎯 MODEL USED: {selected_model}")
+        print(f"📊 RESPONSE LENGTH: {len(ai_response)} characters")
+        print("📥" * 60 + "\n")
+        
+        return ai_response
     except Exception as e:
         return f"Error (fallback): {str(e)}"
 
