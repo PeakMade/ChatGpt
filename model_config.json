@@ -1,0 +1,35 @@
+{
+  "models": {
+    "simple": "gpt-4o-mini",
+    "complex": "gpt-4o",
+    "web_search": "gpt-4o",
+    "fallback": "gpt-4"
+  },
+  "settings": {
+    "max_tokens": 350,
+    "temperature": 0.2,
+    "enable_intelligent_selection": true,
+    "complexity_threshold": 150
+  },
+  "descriptions": {
+    "gpt-4o": "Advanced reasoning and complex tasks",
+    "gpt-4o-mini": "Fast and cost-effective for simple queries",
+    "gpt-4": "Reliable general-purpose model",
+    "gpt-4-turbo": "Enhanced performance and speed"
+  },
+  "keywords": {
+    "complex": [
+      "analyze", "explain", "compare", "evaluate", "strategy", 
+      "detailed", "comprehensive", "pros", "cons", "analysis", 
+      "breakdown", "assessment", "review"
+    ],
+    "web_search": [
+      "current", "latest", "recent", "today", "now", "this week", 
+      "this month", "this year", "up to date", "breaking", "news", 
+      "2025", "market trends", "current prices", "recent data", 
+      "latest stats", "current events", "recent developments", 
+      "president", "interest rates", "mortgage rates", "housing market", 
+      "home prices"
+    ]
+  }
+}

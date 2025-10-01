@@ -16,6 +16,18 @@ import PyPDF2
 import io
 import json
 
+# Import configuration functions for external model settings
+from config import (
+    get_model_for_task, 
+    get_max_tokens, 
+    get_temperature, 
+    get_complexity_threshold,
+    get_complex_keywords,
+    get_web_search_keywords,
+    is_intelligent_selection_enabled,
+    get_model_description
+)
+
 # Removed Azure Key Vault integration - using environment variables instead
 
 # Import OpenAI Assistant Manager for thread-based conversations
@@ -111,43 +123,16 @@ def get_openai_client(api_key):
 
 def should_use_web_search(user_message):
     """
-    Determine if the user's message requires web search for current information
+    Determine if the user's message requires web search for current information.
+    Uses external configuration for web search keywords.
     """
     if not user_message:
         return False
         
     message_lower = user_message.lower()
     
-    # Keywords that suggest need for current/real-time information
-    current_info_keywords = [
-        'current', 'latest', 'recent', 'today', 'now', 'this week', 'this month', 'this year',
-        'up to date', 'breaking', 'news', '2025', 'september 2025', 'december 2025',
-        'market trends', 'current prices', 'recent data', 'latest stats',
-        'what\'s happening', 'current events', 'recent developments',
-        'who is the president', 'current president', 'president of', 'who is president'
-    ]
-    
-    # Real estate specific current info keywords
-    real_estate_current_keywords = [
-        'interest rates', 'mortgage rates', 'housing market', 'home prices',
-        'inventory levels', 'market conditions', 'sales data', 'median price',
-        'market report', 'housing statistics'
-    ]
-    
-    # Check for current info triggers
-    all_keywords = current_info_keywords + real_estate_current_keywords
-    
-    for keyword in all_keywords:
-        if keyword in message_lower:
-            print(f"🌐 WEB SEARCH TRIGGERED → Keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
-            return True
-    
-    # Check for question patterns that might need current info
-    current_patterns = [
-        'what is the current', 'what are the latest', 'how is the market',
-        'what\'s the current', 'current state of', 'latest trends in',
-        'who is the current', 'who is president'
-    ]
+    # Get web search keywords from configuration
+    current_patterns = get_web_search_keywords()
     
     for pattern in current_patterns:
         if pattern in message_lower:
@@ -159,74 +144,35 @@ def should_use_web_search(user_message):
 
 def select_optimal_model(user_message, user_preference=None):
     """
-    Enhanced intelligent model selection with Azure-compatible model names:
-    GPT-4 → GPT-4o (stable models only)
+    Enhanced intelligent model selection using external configuration.
+    Uses model_config.json for models, keywords, and settings.
     """
+    # Check if intelligent selection is enabled
+    if not is_intelligent_selection_enabled():
+        return get_model_for_task('fallback')
+        
     if user_preference and user_preference != "auto":
-        return "gpt-4o"
+        return get_model_for_task('complex')
     
     # Convert to lowercase for analysis
     message_lower = user_message.lower()
     
-    # Ultra-complex keywords (use GPT-4 - most reliable)
-    ultra_complex_keywords = [
-        'comprehensive analysis', 'strategic evaluation', 'multi-factor analysis',
-        'sophisticated approach', 'advanced strategy', 'in-depth research',
-        'thorough investigation', 'detailed assessment', 'complete evaluation',
-        'full analysis', 'extensive research', 'complex reasoning'
-    ]
+    # Get complex keywords from configuration
+    all_complex_keywords = get_complex_keywords()
     
-    # High-complexity keywords (use GPT-4)
-    high_complex_keywords = [
-        'analyze', 'analysis', 'compare', 'comparison', 'evaluate', 'assessment',
-        'research', 'investigate', 'examine', 'study', 'review', 'critique',
-        'strategy', 'plan', 'design', 'architect', 'structure', 'framework'
-    ]
-    
-    # Technical/programming keywords (use GPT-4)
-    technical_keywords = [
-        'code', 'programming', 'debug', 'algorithm', 'function', 'method',
-        'script', 'database', 'api', 'software', 'development', 'technical',
-        'engineering', 'system', 'architecture', 'implementation', 'optimize'
-    ]
-    
-    # Creative/writing keywords (use GPT-4)
-    creative_keywords = [
-        'write', 'essay', 'story', 'article', 'blog', 'content', 'marketing',
-        'creative', 'brainstorm', 'ideas', 'proposal', 'presentation', 'report',
-        'business plan', 'strategy document', 'whitepaper', 'copy'
-    ]
-    
-    # Mathematical/scientific keywords (use GPT-4)
-    math_science_keywords = [
-        'calculate', 'formula', 'equation', 'mathematics', 'statistics',
-        'data analysis', 'scientific', 'research', 'experiment', 'hypothesis',
-        'theory', 'model', 'simulation', 'probability', 'logic'
-    ]
-    
-    # Professional/business keywords (use GPT-4)
-    professional_keywords = [
-        'legal', 'contract', 'policy', 'compliance', 'regulation', 'law',
-        'professional', 'business', 'corporate', 'finance', 'investment',
-        'recommendation', 'advice', 'consultation', 'formal'
-    ]
-    
-    # Combine all complex keywords for GPT-4 selection
-    all_complex_keywords = (ultra_complex_keywords + high_complex_keywords + technical_keywords + 
-                           creative_keywords + math_science_keywords + professional_keywords)
-    
-    # Check for any complexity triggers → use GPT-4
+    # Check for any complexity triggers → use complex model
     for keyword in all_complex_keywords:
         if keyword in message_lower:
-            print(f"🧠 GPT-4 SELECTED → Complex keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
-            return "gpt-4o"
+            print(f"🧠 COMPLEX MODEL SELECTED → Complex keyword '{keyword}' detected in: \"{user_message[:50]}...\"")
+            return get_model_for_task('complex')
     
-    # Check message length → longer messages use GPT-4
-    if len(user_message) > 150:
-        print(f"📏 GPT-4 SELECTED → Long message ({len(user_message)} chars): \"{user_message[:50]}...\"")
-        return "gpt-4"
+    # Check message length → longer messages use complex model
+    complexity_threshold = get_complexity_threshold()
+    if len(user_message) > complexity_threshold:
+        print(f"📏 COMPLEX MODEL SELECTED → Long message ({len(user_message)} chars): \"{user_message[:50]}...\"")
+        return get_model_for_task('complex')
     
-    # Check for complex question patterns → use GPT-4
+    # Check for complex question patterns → use complex model
     complex_patterns = [
         'how does', 'why does', 'what are the implications',
         'explain how', 'explain why', 'what would happen if',
@@ -236,12 +182,12 @@ def select_optimal_model(user_message, user_preference=None):
     
     for pattern in complex_patterns:
         if pattern in message_lower:
-            print(f"🧠 GPT-4 SELECTED → Complex pattern '{pattern}' in: \"{user_message[:50]}...\"")
-            return "gpt-4o"
+            print(f"🧠 COMPLEX MODEL SELECTED → Complex pattern '{pattern}' in: \"{user_message[:50]}...\"")
+            return get_model_for_task('complex')
     
-    # Default to GPT-4o-mini for simple queries (cost optimization)
-    print(f"💰 GPT-4o-mini SELECTED → Simple query: \"{user_message[:50]}...\"")
-    return "gpt-4o"
+    # Default to simple model for simple queries (cost optimization)
+    print(f"💰 SIMPLE MODEL SELECTED → Simple query: \"{user_message[:50]}...\"")
+    return get_model_for_task('simple')
 
 def get_chat_response_with_conversation(api_key, conversation_messages, selected_model=None, uploaded_content=""):
     """Get response from OpenAI API with full conversation context"""
@@ -282,24 +228,7 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
         
         # Add enhanced system prompt for current knowledge optimization  
         current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST, a real estate and business AI assistant with web search capabilities.
-
-**Core Guidelines:**
-- Maximum 280 words per response (leave room for full answers)
-- Use double line breaks between paragraphs
-- Bold headings (**Topic**) and bullet points (•) for clarity
-- Focus on actionable, practical insights
-- Apply market knowledge through logical progression from training data
-
-**Current Information Access:**
-- Current context: {current_date}
-- When users ask for current/recent information, use web search to get up-to-date data
-- Combine your training knowledge with real-time search results for comprehensive answers
-
-**Quick Reference:**
-Apply known market cycles, economic patterns, and established trends to current situations.
-
-You can reference previous conversation messages for context."""
+        system_prompt = f"""You are AI BOOST, a concise real estate and business AI assistant with current knowledge through {current_date} and web search capabilities. Provide focused, single-paragraph responses that are direct and actionable without citations or sources. Use **bold key terms** sparingly for emphasis. Keep responses brief but complete - aim for clarity and practical value in one cohesive paragraph."""
 
         openai_messages.append({
             "role": "system",
@@ -310,7 +239,7 @@ You can reference previous conversation messages for context."""
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions. Respond in 300 words or less."
+                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions with comprehensive, detailed responses."
             })
         
         # Add conversation history (only user and assistant messages)
@@ -343,12 +272,12 @@ You can reference previous conversation messages for context."""
         
         if needs_web_search:
             print("🌐 ENABLING WEB SEARCH for current information")
-            # Use GPT-4o with web search capabilities using the correct API format
+            # Use web search model with web search capabilities using the correct API format
             response = client.responses.create(
-                model="gpt-4o",
+                model=get_model_for_task('web_search'),
                 tools=[{"type": "web_search"}],
                 input=openai_messages,
-                temperature=0.2
+                temperature=get_temperature()
             )
             # Extract response from the new API format
             ai_response = response.output_text
@@ -356,8 +285,8 @@ You can reference previous conversation messages for context."""
             response = client.chat.completions.create(
                 model=selected_model,  # Use intelligently selected model
                 messages=openai_messages,
-                max_tokens=350,  # Increased for complete responses
-                temperature=0.2
+                max_tokens=get_max_tokens(),
+                temperature=get_temperature()
             )
             # Extract response from standard format
             ai_response = response.choices[0].message.content
@@ -423,33 +352,7 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         
         # Add system prompt with 2025 knowledge context
         current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST, an advanced AI assistant with web search capabilities updated through 2025.
-
-**Key Info:**
-- Current date: {current_date}
-- Access to 2025 information and real-time web search for current data
-- Maximum 280 words per response (leave room for complete answers)
-
-**Current Information:**
-When users ask for current, recent, or up-to-date information, use web search to provide the latest data.
-
-**Formatting (Follow Exactly):**
-- Double line breaks between paragraphs
-- **Bold headings** and bullet points (•)
-- Numbered lists (1., 2., 3.) for processes
-- Clear visual hierarchy with proper spacing
-
-**Example Format:**
-### Topic
-
-Paragraph with good spacing.
-
-Another paragraph after blank line.
-
-• Key point one
-• Key point two
-
-Provide helpful, accurate responses with excellent formatting."""
+        system_prompt = f"""You are AI BOOST, an advanced AI assistant with current knowledge through {current_date} and web search capabilities for real-time data. Provide focused, single-paragraph responses that are direct and actionable without citations or sources. Use **bold key terms** sparingly for emphasis. Keep responses brief but complete - aim for clarity and practical value in one cohesive paragraph."""
 
         openai_messages.append({
             "role": "system",
@@ -460,7 +363,7 @@ Provide helpful, accurate responses with excellent formatting."""
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions. Respond in 300 words or less."
+                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease provide a focused, concise response based on this content."
             })
         
         # Add conversation history
@@ -492,12 +395,12 @@ Provide helpful, accurate responses with excellent formatting."""
         
         if needs_web_search:
             print("🌐 ENABLING WEB SEARCH for current information")
-            # Use GPT-4o with web search capabilities using the correct API format
+            # Use web search model with web search capabilities using the correct API format
             response = client.responses.create(
-                model="gpt-4o",
+                model=get_model_for_task('web_search'),
                 tools=[{"type": "web_search"}],
                 input=openai_messages,
-                temperature=0.2
+                temperature=get_temperature()
             )
             # Extract response from the new API format
             ai_response = response.output_text
@@ -505,8 +408,8 @@ Provide helpful, accurate responses with excellent formatting."""
             response = client.chat.completions.create(
                 model=selected_model,  # Use intelligently selected model
                 messages=openai_messages,
-                max_tokens=350,  # Increased for complete responses
-                temperature=0.2
+                max_tokens=get_max_tokens(),
+                temperature=get_temperature()
             )
             # Extract response from standard format
             ai_response = response.choices[0].message.content
@@ -556,33 +459,7 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         
         # Add system prompt with 2025 knowledge context
         current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST, an advanced AI assistant with web search capabilities updated through 2025.
-
-**Key Info:**
-- Current date: {current_date}  
-- Access to 2025 information and real-time web search for current data
-- Maximum 280 words per response (leave room for complete answers)
-
-**Current Information:**
-When users ask for current, recent, or up-to-date information, use web search to provide the latest data.
-
-**Formatting (Follow Exactly):**
-- Double line breaks between paragraphs
-- **Bold headings** and bullet points (•)
-- Numbered lists (1., 2., 3.) for processes
-- Clear visual hierarchy with proper spacing
-
-**Example Format:**
-### Topic
-
-Paragraph with good spacing.
-
-Another paragraph after blank line.
-
-• Key point one
-• Key point two
-
-Provide helpful, accurate responses with excellent formatting."""
+        system_prompt = f"""You are AI BOOST, an advanced AI assistant with current knowledge through {current_date} and web search capabilities for real-time data. Provide focused, single-paragraph responses that are direct and actionable without citations or sources. Use **bold key terms** sparingly for emphasis. Keep responses brief but complete - aim for clarity and practical value in one cohesive paragraph."""
 
         openai_messages.append({
             "role": "system",
@@ -593,7 +470,7 @@ Provide helpful, accurate responses with excellent formatting."""
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease use this content to help answer their questions. Respond in 300 words or less."
+                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease provide a focused, concise response based on this content."
             })
         
         # Add conversation history
@@ -625,12 +502,12 @@ Provide helpful, accurate responses with excellent formatting."""
         
         if needs_web_search:
             print("🌐 ENABLING WEB SEARCH for current information")
-            # Use GPT-4o with web search capabilities using the correct API format
+            # Use web search model with web search capabilities using the correct API format
             response = client.responses.create(
-                model="gpt-4o",
+                model=get_model_for_task('web_search'),
                 tools=[{"type": "web_search"}],
                 input=openai_messages,
-                temperature=0.2
+                temperature=get_temperature()
             )
             # Extract response from the new API format
             ai_response = response.output_text
@@ -638,8 +515,8 @@ Provide helpful, accurate responses with excellent formatting."""
             response = client.chat.completions.create(
                 model=selected_model,  # Use intelligently selected model
                 messages=openai_messages,
-                max_tokens=350,
-                temperature=0.2
+                max_tokens=get_max_tokens(),
+                temperature=get_temperature()
             )
             # Extract response from standard format
             ai_response = response.choices[0].message.content
@@ -697,6 +574,62 @@ def api_key_status():
         'has_environment_key': has_key,
         'debug': debug_info
     })
+
+@app.route('/config')
+def config_status():
+    """View current model configuration settings"""
+    from config import load_model_config, get_all_models, get_all_settings
+    
+    try:
+        config_data = load_model_config()
+        
+        # Test the configuration functions
+        config_info = {
+            'config_loaded': True,
+            'config_type': 'INI',
+            'models': {
+                'simple': get_model_for_task('simple'),
+                'complex': get_model_for_task('complex'),
+                'web_search': get_model_for_task('web_search'),
+                'fallback': get_model_for_task('fallback')
+            },
+            'settings': {
+                'max_tokens': get_max_tokens(),
+                'temperature': get_temperature(),
+                'complexity_threshold': get_complexity_threshold(),
+                'intelligent_selection_enabled': is_intelligent_selection_enabled()
+            },
+            'keywords': {
+                'complex_keywords_count': len(get_complex_keywords()),
+                'web_search_keywords_count': len(get_web_search_keywords()),
+                'sample_complex_keywords': get_complex_keywords()[:5],
+                'sample_web_search_keywords': get_web_search_keywords()[:5]
+            },
+            'descriptions': {
+                'simple': get_model_description('simple'),
+                'complex': get_model_description('complex'),
+                'web_search': get_model_description('web_search'),
+                'fallback': get_model_description('fallback')
+            },
+            'raw_sections': {
+                'models': get_all_models(),
+                'settings': get_all_settings()
+            }
+        }
+        
+        return jsonify(config_info)
+        
+    except Exception as e:
+        return jsonify({
+            'config_loaded': False,
+            'error': str(e),
+            'fallback_models': {
+                'simple': 'gpt-4o-mini',
+                'complex': 'gpt-4o',
+                'web_search': 'gpt-4o',
+                'fallback': 'gpt-4'
+            }
+        }), 500
 
 @app.route('/chat', methods=['POST'])
 def chat():
