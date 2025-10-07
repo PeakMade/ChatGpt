@@ -23,6 +23,7 @@ from config import (
     get_temperature, 
     get_complexity_threshold,
     get_complex_keywords,
+    get_openai_api_key,
     get_web_search_keywords,
     is_intelligent_selection_enabled,
     get_model_description
@@ -41,6 +42,44 @@ except ImportError as e:
 
 # Configuration
 import config
+import re
+
+def strip_urls_from_response(response):
+    """Remove all URLs from the response to ensure clean output"""
+    if not response:
+        return response
+    
+    # Remove markdown links [text](url) but keep the text
+    response = re.sub(r'\[([^\]]+)\]\(https?://[^)]+\)', r'\1', response)
+    
+    # Remove URLs in parentheses with https://
+    response = re.sub(r'\(https://[^)]+\)', '', response)
+    # Remove URLs in parentheses with http://
+    response = re.sub(r'\(http://[^)]+\)', '', response)
+    
+    # Remove standalone URLs (not in parentheses)
+    response = re.sub(r'https?://[^\s)]+[^\s.,!?)]', '', response)
+    
+    # Extract domain names from remaining URL patterns and convert to simple citations
+    def extract_domain(match):
+        url = match.group(0)
+        # Extract domain from URL
+        domain_match = re.search(r'https?://(?:www\.)?([^/]+)', url)
+        if domain_match:
+            domain = domain_match.group(1)
+            return f'({domain})'
+        return ''
+    
+    # Look for any remaining URL patterns and convert to domain citations
+    response = re.sub(r'\([^)]*https?://[^)]*\)', extract_domain, response)
+    
+    # Clean up formatting issues
+    response = re.sub(r'\(\s*\)', '', response)  # Remove empty parentheses
+    response = re.sub(r'\s+', ' ', response)     # Remove extra spaces
+    response = re.sub(r'\s+([.,!?])', r'\1', response)  # Fix punctuation spacing
+    response = response.strip()
+    
+    return response
 
 # Load environment variables from .env file for local development
 try:
@@ -62,15 +101,22 @@ def make_session_permanent():
     session.permanent = True
 
 def get_api_key():
-    """Get API key from environment variables or return None for user input"""
-    # Try environment variable first (local development and production)
+    """Get API key from configuration file, environment variables, or return None for user input"""
+    # Try configuration file first (permanent embedding)
+    config_key = get_openai_api_key().strip()
+    if config_key and config_key.startswith('sk-') and len(config_key) > 20:
+        print(f"Using configuration file API key (length: {len(config_key)})")
+        return config_key
+    
+    # Try environment variable second (local development and production)
     env_key = os.environ.get('OPENAI_API_KEY', '').strip()
     if env_key and env_key.startswith('sk-') and len(env_key) > 20:
         print(f"Using environment API key (length: {len(env_key)})")
         return env_key
     
     # Debug info
-    print(f"No API key found in environment variables")
+    print(f"No API key found in configuration file or environment variables")
+    print(f"  - Config file key exists: {bool(config_key)}")
     print(f"  - Environment var exists: {bool(os.environ.get('OPENAI_API_KEY'))}")
     print(f"  - Environment var value length: {len(os.environ.get('OPENAI_API_KEY', ''))}")
     
@@ -116,7 +162,8 @@ def get_openai_client(api_key):
     if not api_key:
         return None
     try:
-        client = openai.OpenAI(api_key=api_key)
+        clean_api_key = api_key.strip() if api_key else ""
+        client = openai.OpenAI(api_key=clean_api_key)
         return client
     except Exception as e:
         return None
@@ -212,23 +259,24 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
             selected_model = select_optimal_model(user_message)
         
         try:
-            # Method 1: Basic client creation
-            client = openai.OpenAI(api_key=api_key)
-        except Exception:
+            # Method 1: Basic client creation - ensure clean API key
+            clean_api_key = api_key.strip() if api_key else ""
+            client = openai.OpenAI(api_key=clean_api_key)
+        except Exception as e:
             try:
-                # Method 2: Set API key globally (fallback for older versions)
-                openai.api_key = api_key
-                client = openai.OpenAI()
-            except Exception:
+                # Method 2: Fallback - try with explicit parameters only
+                client = openai.OpenAI(api_key=clean_api_key, timeout=60.0)
+            except Exception as e2:
                 # Method 3: Use simplified approach
-                return get_chat_response_legacy(api_key, conversation_messages, uploaded_content)
+                print(f"Error (fallback): {e2}")
+                return f"Error (fallback): {e2}"
         
         # Prepare messages for OpenAI
         openai_messages = []
         
         # Add enhanced system prompt for current knowledge optimization  
         current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST. Provide complete, informative answers in 1-2 paragraphs. Prioritize finishing your full thought over staying under token limits - never cut off mid-sentence or leave answers incomplete. IMPORTANT: When referencing sources, always include the simple domain name in parentheses like (reuters.com) or (cnn.com). Use ONLY the domain name - NO markdown formatting, NO https://, NO full URLs, NO utm parameters. Example: "The latest data shows..." (bloomberg.com). Be conversational and direct."""
+        system_prompt = f"""You are AI BOOST. Give informative 1-2 paragraph answers. STOP PUTTING URLs IN RESPONSES. Do not write https://, do not write (https://...), do not write www., do not write utm_source, do not write any links. If you write ANY URL or link you have failed completely. Only write plain text with maybe one website name at the end like (nfl.com). NO URLS ANYWHERE."""
 
         openai_messages.append({
             "role": "system",
@@ -300,7 +348,9 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
         print(f"📊 RESPONSE LENGTH: {len(ai_response)} characters")
         print("📥" * 60 + "\n")
         
-        return ai_response
+        # Strip URLs from response before returning
+        clean_response = strip_urls_from_response(ai_response)
+        return clean_response
     except openai.AuthenticationError as e:
         return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
     except openai.RateLimitError:
@@ -337,7 +387,8 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         
         try:
             # Method 1: Basic client creation
-            client = openai.OpenAI(api_key=api_key)
+            clean_api_key = api_key.strip() if api_key else ""
+            client = openai.OpenAI(api_key=clean_api_key)
         except Exception:
             try:
                 # Method 2: Set API key globally (fallback for older versions)
@@ -352,7 +403,7 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         
         # Add system prompt with 2025 knowledge context
         current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST. Provide complete, informative answers in 1-2 paragraphs. Prioritize finishing your full thought over staying under token limits - never cut off mid-sentence or leave answers incomplete. IMPORTANT: When referencing sources, always include the simple domain name in parentheses like (reuters.com) or (cnn.com). Use ONLY the domain name - NO markdown formatting, NO https://, NO full URLs, NO utm parameters. Example: "The latest data shows..." (bloomberg.com). Be conversational and direct."""
+        system_prompt = f"""You are AI BOOST. Give informative 1-2 paragraph answers. STOP PUTTING URLs IN RESPONSES. Do not write https://, do not write (https://...), do not write www., do not write utm_source, do not write any links. If you write ANY URL or link you have failed completely. Only write plain text with maybe one website name at the end like (nfl.com). NO URLS ANYWHERE."""
 
         openai_messages.append({
             "role": "system",
@@ -363,7 +414,7 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"Context: {uploaded_content}\n\nUse this information to provide a comprehensive but concise 1-2 paragraph response that naturally incorporates the context."
+                "content": f"Context: {uploaded_content}\n\nUse this information to provide a 1-2 paragraph response. DO NOT include any URLs, https://, www., or links in your response. NO URLS ANYWHERE."
             })
         
         # Add conversation history
@@ -423,7 +474,9 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         print(f"📊 RESPONSE LENGTH: {len(ai_response)} characters")
         print("📥" * 60 + "\n")
         
-        return ai_response
+        # Strip URLs from response before returning
+        clean_response = strip_urls_from_response(ai_response)
+        return clean_response
     except openai.AuthenticationError as e:
         return f"Error: Authentication failed - {str(e)}. Please verify your OpenAI API key is correct and active."
     except openai.RateLimitError:
@@ -452,14 +505,15 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         # Select optimal model based on message complexity
         selected_model = select_optimal_model(user_message)
         
-        # Create client with explicit API key
-        client = openai.OpenAI(api_key=api_key)
+        # Create client with explicit API key - ensure clean parameters
+        clean_api_key = api_key.strip() if api_key else ""
+        client = openai.OpenAI(api_key=clean_api_key)
         # Prepare messages for OpenAI
         openai_messages = []
         
         # Add system prompt with 2025 knowledge context
         current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST. Provide complete, informative answers in 1-2 paragraphs. Prioritize finishing your full thought over staying under token limits - never cut off mid-sentence or leave answers incomplete. IMPORTANT: When referencing sources, always include the simple domain name in parentheses like (reuters.com) or (cnn.com). Use ONLY the domain name - NO markdown formatting, NO https://, NO full URLs, NO utm parameters. Example: "The latest data shows..." (bloomberg.com). Be conversational and direct."""
+        system_prompt = f"""You are AI BOOST. Give informative 1-2 paragraph answers. STOP PUTTING URLs IN RESPONSES. Do not write https://, do not write (https://...), do not write www., do not write utm_source, do not write any links. If you write ANY URL or link you have failed completely. Only write plain text with maybe one website name at the end like (nfl.com). NO URLS ANYWHERE."""
 
         openai_messages.append({
             "role": "system",
@@ -470,7 +524,7 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"Context: {uploaded_content}\n\nUse this information to provide a comprehensive but concise 1-2 paragraph response that naturally incorporates the context."
+                "content": f"Context: {uploaded_content}\n\nUse this information to provide a 1-2 paragraph response. DO NOT include any URLs, https://, www., or links in your response. NO URLS ANYWHERE."
             })
         
         # Add conversation history
@@ -530,7 +584,9 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         print(f"📊 RESPONSE LENGTH: {len(ai_response)} characters")
         print("📥" * 60 + "\n")
         
-        return ai_response
+        # Strip URLs from response before returning
+        clean_response = strip_urls_from_response(ai_response)
+        return clean_response
     except Exception as e:
         return f"Error (fallback): {str(e)}"
 
@@ -1230,10 +1286,14 @@ def get_messages():
             session['messages'] = []
         if 'api_key' not in session:
             session['api_key'] = ''
+        
+        # Use permanent API key if available, otherwise use session key
+        permanent_api_key = get_api_key()
+        api_key_to_return = permanent_api_key if permanent_api_key else session.get('api_key', '')
             
         return jsonify({
             'messages': session.get('messages', []),
-            'api_key': session.get('api_key', '')
+            'api_key': api_key_to_return
         })
     except Exception as e:
         return jsonify({

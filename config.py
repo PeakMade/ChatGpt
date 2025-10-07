@@ -57,6 +57,9 @@ def create_default_config(config_file):
     config.set('settings', 'enable_intelligent_model_selection', 'true')
     config.set('settings', 'complexity_threshold', '150')
     
+    config.add_section('api_keys')
+    config.set('api_keys', 'openai_api_key', 'your-api-key-here')
+    
     config.add_section('model_descriptions')
     config.set('model_descriptions', 'simple_description', 'Cost-effective model for basic queries')
     config.set('model_descriptions', 'complex_description', 'Advanced model for complex analysis')
@@ -165,6 +168,16 @@ def get_all_settings():
     if _MODEL_CONFIG.has_section('settings'):
         return dict(_MODEL_CONFIG['settings'])
     return {}
+
+def get_openai_api_key():
+    """Get OpenAI API key from configuration"""
+    if _MODEL_CONFIG.has_section('api_keys'):
+        api_key = _MODEL_CONFIG.get('api_keys', 'openai_api_key', fallback='')
+        if api_key and api_key != 'your-api-key-here':
+            return api_key
+    
+    # Fallback to environment variable
+    return os.environ.get('OPENAI_API_KEY', '')
 
 def reload_config():
     """Reload configuration from file (useful for development)"""

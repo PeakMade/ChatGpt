@@ -763,6 +763,8 @@
             border-color: #1f51ff;
         }
 
+
+
         .status-indicator {
             padding: 2px 6px;
             border-radius: 10px;
@@ -932,7 +934,44 @@
             margin-top: 5px;
         }
 
-        /* Engine Status in Admin Settings */
+        /* Unified Dynamic Status Screen */
+        .unified-status-content {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 4px;
+            margin-top: 2px;
+            border: 1px solid #dee2e6;
+            font-size: 8px;
+        }
+        
+        .models-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            margin-top: 2px;
+        }
+        
+        .model-item {
+            font-size: 6px;
+            padding: 1px 3px;
+            background: rgba(0, 123, 255, 0.1);
+            border-radius: 2px;
+            border: 1px solid rgba(0, 123, 255, 0.2);
+            flex: 0 0 auto;
+        }
+        
+        .model-item.active {
+            background: rgba(40, 167, 69, 0.2);
+            border-color: rgba(40, 167, 69, 0.4);
+            font-weight: 600;
+        }
+        
+        .model-item.available {
+            background: rgba(0, 123, 255, 0.1);
+            border-color: rgba(0, 123, 255, 0.3);
+        }
+
+        /* Engine Status in Admin Settings - Legacy support */
         .engine-status-content {
             display: flex;
             flex-direction: column;
@@ -974,6 +1013,78 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.3px;
+        }
+
+        /* Configuration Details */
+        .configuration-details {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(31, 81, 255, 0.05);
+            border-radius: 6px;
+            border: 1px solid rgba(31, 81, 255, 0.1);
+            font-size: 8px;
+            line-height: 1.4;
+        }
+
+        .config-section {
+            margin-bottom: 8px;
+        }
+
+        .config-section strong {
+            color: #1f51ff;
+            font-size: 8px;
+            font-weight: 600;
+        }
+
+        .config-item {
+            display: inline-block;
+            color: #555;
+            font-size: 8px;
+            margin-right: 10px;
+            transition: color 0.3s ease;
+        }
+
+        .config-item:hover {
+            color: #1f51ff;
+        }
+
+        /* Enhanced admin panel responsiveness */
+        @media (max-width: 768px) {
+            .admin-panel {
+                width: 95%;
+                margin: 10px auto;
+            }
+            
+            .engine-status-content {
+                padding: 6px;
+            }
+            
+            .configuration-details {
+                padding: 6px;
+                font-size: 7px;
+            }
+            
+            .config-item {
+                font-size: 7px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .admin-panel {
+                width: 98%;
+                margin: 5px auto;
+            }
+            
+            .engine-status-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+            }
+            
+            .engine-status-label,
+            .engine-status-value {
+                font-size: 8px;
+            }
         }
 
         /* AI Status Window - Compact bottom bar */
@@ -1399,23 +1510,19 @@
                         <div id="apiStatus" class="status-indicator status-disconnected" style="margin-top: 1px; font-size: 8px;">Not Connected</div>
                         
                         <div style="margin-top: 6px;">
-                            <h4 style="margin: 0 0 3px 0; font-size: 10px;">Preferred Model</h4>
-                            <select id="preferredModel" class="form-select form-select-sm" style="font-size: 10px; padding: 2px 5px;">
-                                <option value="">Auto-select (GPT-4o Mini Priority + Fallback)</option>
-                                <option value="gpt-4o-mini">GPT-4o Mini (Default Priority)</option>
-                                <option value="gpt-4o">GPT-4o (Latest)</option>
-                                <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                                <option value="gpt-4">GPT-4</option>
-                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                            </select>
-                        </div>
-                        
-                        <div style="margin-top: 3px; padding-top: 2px; border-top: 1px solid #e0e0e0;">
-                            <h4 style="margin: 0 0 2px 0; font-size: 9px;">Engine Status</h4>
-                            <div class="engine-status-content" id="engineStatusContent">
+                            <h4 style="margin: 0 0 4px 0; font-size: 11px; color: #1f51ff; font-weight: 700;">🚀 Dynamic System Status</h4>
+                            <div class="unified-status-content" id="unifiedStatusContent">
                                 <div class="engine-status-item">
                                     <span class="engine-status-label">Model:</span>
                                     <span class="engine-status-value" id="currentModel">GPT-4o-mini</span>
+                                </div>
+                                <div class="engine-status-item">
+                                    <span class="engine-status-label">Status:</span>
+                                    <span class="engine-status-badge" id="aiStatus">Ready</span>
+                                </div>
+                                <div class="engine-status-item">
+                                    <span class="engine-status-label">API Connection:</span>
+                                    <span class="engine-status-value" id="apiConnection">Connected</span>
                                 </div>
                                 <div class="engine-status-item">
                                     <span class="engine-status-label">Temperature:</span>
@@ -1426,15 +1533,22 @@
                                     <span class="engine-status-value" id="maxTokens">300</span>
                                 </div>
                                 <div class="engine-status-item">
+                                    <span class="engine-status-label">Intelligence:</span>
+                                    <span class="engine-status-value" id="intelligenceMode">Auto</span>
+                                </div>
+                                <div class="engine-status-item">
                                     <span class="engine-status-label">Last Response:</span>
                                     <span class="engine-status-value" id="lastTokens">0</span>
                                 </div>
                                 <div class="engine-status-item">
-                                    <span class="engine-status-label">Status:</span>
-                                    <span class="engine-status-badge" id="aiStatus">Ready</span>
+                                    <span class="engine-status-label">Total Queries:</span>
+                                    <span class="engine-status-value" id="totalQueries">0</span>
                                 </div>
                                 <div class="token-progress" title="Token usage progress" style="margin-top: 3px;">
                                     <div class="token-progress-bar" id="tokenProgressBar"></div>
+                                </div>
+                                <div class="models-grid" id="modelsGrid" style="margin-top: 3px;">
+                                    <!-- Available models will be shown here -->
                                 </div>
                             </div>
                             
@@ -2584,26 +2698,7 @@ Total conversations: ${conversations.length}
             console.log('📊 API section classes after:', apiSection.className);
         }
 
-        function toggleSettings() {
-            const apiSection = document.getElementById('apiKeySection');
-            const toggle = document.getElementById('settingsToggle');
-            
-            console.log('🔧 Gear clicked! API section found:', apiSection);
-            console.log('🔍 API section classes before:', apiSection.className);
-            console.log('📊 API section display style before:', window.getComputedStyle(apiSection).display);
-            
-            if (apiSection.classList.contains('show')) {
-                apiSection.classList.remove('show');
-                toggle.style.transform = 'rotate(0deg)';
-                console.log('❌ Settings closed');
-            } else {
-                apiSection.classList.add('show');
-                toggle.style.transform = 'rotate(180deg)';
-                console.log('✅ Settings opened');
-                console.log('📊 API section display style after:', window.getComputedStyle(apiSection).display);
-                console.log('🔍 API section classes after:', apiSection.className);
-            }
-        }
+
 
         function logoutAdmin() {
             if (confirm('Are you sure you want to logout? You will need to enter credentials again.')) {
@@ -2693,6 +2788,13 @@ Total conversations: ${conversations.length}
                 setTimeout(() => {
                     errorDiv.style.display = 'none';
                 }, 3000);
+                // Show configuration details after login
+                setTimeout(async () => {
+                    const config = await loadConfigurationData();
+                    if (config) {
+                        showConfigurationDetails(config);
+                    }
+                }, 500);
                 
             } else {
                 console.log('❌ Login failed: Invalid credentials');
@@ -2722,6 +2824,314 @@ Total conversations: ${conversations.length}
             if (event.key === 'Enter') {
                 submitAdminLogin();
             }
+        }
+
+        // Dynamic Configuration Loading Functions
+        async function loadConfigurationData() {
+            try {
+                console.log('🔄 Loading configuration data...');
+                const response = await fetch('/config');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch configuration');
+                }
+                const config = await response.json();
+                console.log('✅ Configuration loaded:', config);
+                return config;
+            } catch (error) {
+                console.error('❌ Error loading configuration:', error);
+                return null;
+            }
+        }
+
+        // Unified Dynamic Status System
+        async function updateEngineStatus(showAnimation = false) {
+            try {
+                console.log('🔄 Updating unified dynamic status...');
+                
+                // Get all status elements from unified screen
+                const currentModelEl = document.getElementById('currentModel');
+                const currentTempEl = document.getElementById('currentTemp');
+                const maxTokensEl = document.getElementById('maxTokens');
+                const lastTokensEl = document.getElementById('lastTokens');
+                const aiStatusEl = document.getElementById('aiStatus');
+                const apiConnectionEl = document.getElementById('apiConnection');
+                const intelligenceModeEl = document.getElementById('intelligenceMode');
+                const totalQueriesEl = document.getElementById('totalQueries');
+                const modelsGridEl = document.getElementById('modelsGrid');
+                const tokenProgressBar = document.getElementById('tokenProgressBar');
+
+                // Get real-time configuration
+                const config = await loadConfigurationData();
+                
+                // No preferred model dropdown - use intelligent auto-selection
+                const selectedModel = ''; // Always use auto-selection
+                
+                // Get API connection status
+                const apiKeyInput = document.getElementById('apiKey');
+                const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+                const apiKeySection = document.querySelector('.api-key-section');
+                const hasEnvironmentKey = apiKeySection && apiKeySection.style.display === 'none';
+                const isConnected = hasEnvironmentKey || (apiKey && apiKey.length > 0);
+
+                // 1. DYNAMIC MODEL STATUS - Show actual model being used
+                if (currentModelEl) {
+                    let modelDisplay = 'Ready';
+                    let modelColor = '#6c757d'; // Gray for ready state
+                    
+                    // Check if we have a last used model stored
+                    const lastUsedModel = sessionStorage.getItem('lastUsedModel');
+                    
+                    if (lastUsedModel) {
+                        // Show the actual model that was used for the last response
+                        switch (lastUsedModel.toLowerCase()) {
+                            case 'gpt-4o-mini':
+                                modelDisplay = 'GPT-4o Mini';
+                                modelColor = '#28a745'; // Green for active use
+                                break;
+                            case 'gpt-4o':
+                                modelDisplay = 'GPT-4o';
+                                modelColor = '#007bff'; // Blue for premium
+                                break;
+                            case 'gpt-4-turbo':
+                                modelDisplay = 'GPT-4 Turbo';
+                                modelColor = '#007bff';
+                                break;
+                            case 'gpt-4':
+                                modelDisplay = 'GPT-4';
+                                modelColor = '#007bff';
+                                break;
+                            case 'gpt-3.5-turbo':
+                                modelDisplay = 'GPT-3.5 Turbo';
+                                modelColor = '#ffc107'; // Yellow for older
+                                break;
+                            default:
+                                // Clean up the model name if it has extra text
+                                let cleanModel = lastUsedModel.replace(/[^a-zA-Z0-9\-\.]/g, '');
+                                modelDisplay = cleanModel.charAt(0).toUpperCase() + cleanModel.slice(1);
+                                modelColor = '#28a745';
+                        }
+                        
+                        // Add timestamp indicator
+                        modelDisplay += ' (Active)';
+                    } else {
+                        // No model used yet - show default from config
+                        if (config && config.models) {
+                            if (config.models.simple_model) {
+                                modelDisplay = 'GPT-4o Mini (Default)';
+                                modelColor = '#17a2b8'; // Cyan for default
+                            } else {
+                                modelDisplay = 'Auto-select (Ready)';
+                                modelColor = '#6c757d';
+                            }
+                        }
+                    }
+                    
+                    currentModelEl.textContent = modelDisplay;
+                    currentModelEl.style.color = modelColor;
+                    currentModelEl.style.fontWeight = '600';
+                }
+
+                // 2. DYNAMIC TEMPERATURE
+                if (currentTempEl) {
+                    let temperature = '0.2'; // Default
+                    if (config && config.settings && config.settings.temperature !== undefined) {
+                        temperature = config.settings.temperature.toString();
+                    }
+                    
+                    currentTempEl.textContent = temperature;
+                    currentTempEl.style.color = '#17a2b8';
+                    
+                    // Add context hint
+                    currentTempEl.title = `Creativity level: ${temperature} (0=focused, 1=creative)`;
+                }
+
+                // 3. DYNAMIC MAX TOKENS
+                if (maxTokensEl) {
+                    let maxTokens = 'Unknown';
+                    if (config && config.settings && config.settings.max_tokens) {
+                        maxTokens = config.settings.max_tokens.toLocaleString();
+                    } else {
+                        // Try to get from model limits
+                        if (selectedModel) {
+                            switch (selectedModel) {
+                                case 'gpt-4o':
+                                case 'gpt-4o-mini':
+                                    maxTokens = '128,000';
+                                    break;
+                                case 'gpt-4-turbo':
+                                    maxTokens = '128,000';
+                                    break;
+                                case 'gpt-4':
+                                    maxTokens = '8,192';
+                                    break;
+                                case 'gpt-3.5-turbo':
+                                    maxTokens = '4,096';
+                                    break;
+                                default:
+                                    maxTokens = 'Variable';
+                            }
+                        }
+                    }
+                    
+                    maxTokensEl.textContent = maxTokens;
+                    maxTokensEl.style.color = '#17a2b8';
+                    maxTokensEl.title = 'Maximum tokens per response';
+                }
+
+                // 4. DYNAMIC LAST RESPONSE TOKENS (keep current value if exists)
+                if (lastTokensEl) {
+                    const currentTokens = lastTokensEl.textContent || '0';
+                    if (currentTokens === '0' || currentTokens === 'Unknown') {
+                        lastTokensEl.textContent = '0';
+                    }
+                    lastTokensEl.style.color = '#28a745';
+                    lastTokensEl.title = 'Tokens used in last response';
+                }
+
+                // 5. DYNAMIC AI STATUS
+                if (aiStatusEl) {
+                    let status = aiStatusEl.textContent || 'Ready';
+                    let statusColor = '#28a745';
+                    let bgColor = 'rgba(40, 167, 69, 0.1)';
+                    
+                    if (!isConnected) {
+                        status = 'No API Key';
+                        statusColor = '#dc3545';
+                        bgColor = 'rgba(220, 53, 69, 0.1)';
+                    } else if (status === 'Thinking...') {
+                        statusColor = '#ffc107';
+                        bgColor = 'rgba(255, 193, 7, 0.1)';
+                    } else if (status === 'Error') {
+                        statusColor = '#dc3545';
+                        bgColor = 'rgba(220, 53, 69, 0.1)';
+                    }
+                    
+                    aiStatusEl.style.color = statusColor;
+                    aiStatusEl.style.backgroundColor = bgColor;
+                    aiStatusEl.style.padding = '4px 8px';
+                    aiStatusEl.style.borderRadius = '4px';
+                    aiStatusEl.style.fontSize = '10px';
+                    aiStatusEl.style.fontWeight = '600';
+                }
+
+                // 6. DYNAMIC TOKEN PROGRESS BAR
+                if (tokenProgressBar) {
+                    const lastTokens = lastTokensEl ? parseInt(lastTokensEl.textContent.replace(/,/g, '') || '0') : 0;
+                    const maxTokensNum = maxTokensEl ? parseInt(maxTokensEl.textContent.replace(/,/g, '') || '1000') : 1000;
+                    
+                    const percentage = Math.min((lastTokens / maxTokensNum) * 100, 100);
+                    tokenProgressBar.style.width = percentage + '%';
+                    
+                    if (percentage > 80) {
+                        tokenProgressBar.style.background = 'linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)';
+                    } else if (percentage > 60) {
+                        tokenProgressBar.style.background = 'linear-gradient(135deg, #ffc107 0%, #fd7e14 100%)';
+                    } else {
+                        tokenProgressBar.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+                    }
+                }
+
+                // 7. ADD SUBTLE ANIMATION IF REQUESTED
+                if (showAnimation) {
+                    const elementsToAnimate = [currentModelEl, currentTempEl, maxTokensEl, aiStatusEl].filter(el => el);
+                    elementsToAnimate.forEach(el => {
+                        el.style.transition = 'all 0.4s ease';
+                        el.style.transform = 'scale(1.08)';
+                        el.style.boxShadow = '0 0 15px rgba(31, 81, 255, 0.3)';
+                        setTimeout(() => {
+                            el.style.transform = 'scale(1)';
+                            el.style.boxShadow = 'none';
+                        }, 400);
+                    });
+                }
+
+                // 8. POPULATE NEW UNIFIED STATUS ELEMENTS
+                
+                // API Connection Status
+                if (apiConnectionEl) {
+                    if (isConnected) {
+                        apiConnectionEl.textContent = hasEnvironmentKey ? 'Embedded Key' : 'User Key';
+                        apiConnectionEl.style.color = '#28a745';
+                        apiConnectionEl.style.fontWeight = '600';
+                    } else {
+                        apiConnectionEl.textContent = 'Not Connected';
+                        apiConnectionEl.style.color = '#dc3545';
+                        apiConnectionEl.style.fontWeight = '600';
+                    }
+                }
+                
+                // Intelligence Mode
+                if (intelligenceModeEl) {
+                    const intelligentSelection = config?.settings?.enable_intelligent_model_selection;
+                    if (intelligentSelection === 'true' || intelligentSelection === true) {
+                        intelligenceModeEl.textContent = 'Smart Auto';
+                        intelligenceModeEl.style.color = '#007bff';
+                    } else {
+                        intelligenceModeEl.textContent = 'Manual';
+                        intelligenceModeEl.style.color = '#6c757d';
+                    }
+                }
+                
+                // Total Queries (from session storage or local tracking)
+                if (totalQueriesEl) {
+                    const queryCount = sessionStorage.getItem('totalQueries') || '0';
+                    totalQueriesEl.textContent = queryCount;
+                    totalQueriesEl.style.color = '#17a2b8';
+                }
+                
+
+                
+
+                
+                // Available Models Grid
+                if (modelsGridEl && config?.models) {
+                    let modelsHtml = '';
+                    const modelMap = {
+                        'simple_model': 'GPT-4o Mini',
+                        'complex_model': 'GPT-4o',
+                        'web_search_model': 'Web Search',
+                        'fallback_model': 'GPT-4 Legacy'
+                    };
+                    
+                    Object.keys(config.models).forEach(modelKey => {
+                        const modelName = modelMap[modelKey] || modelKey.replace('_', ' ');
+                        const isActive = selectedModel && selectedModel.includes(config.models[modelKey]);
+                        const cssClass = isActive ? 'model-item active' : 'model-item available';
+                        modelsHtml += `<div class="${cssClass}" title="${config.models[modelKey]}">${modelName}</div>`;
+                    });
+                    
+                    modelsGridEl.innerHTML = modelsHtml;
+                }
+
+                console.log('✅ Unified dynamic status updated:', {
+                    model: currentModelEl?.textContent,
+                    temperature: currentTempEl?.textContent,
+                    maxTokens: maxTokensEl?.textContent,
+                    connected: isConnected,
+                    intelligence: intelligenceModeEl?.textContent,
+                    timestamp: new Date().toLocaleTimeString()
+                });
+
+            } catch (error) {
+                console.error('❌ Error updating unified dynamic status:', error);
+            }
+        }
+
+        // Legacy function - now integrated into unified status
+        function showConfigurationDetails(config) {
+            // Configuration details are now part of the unified status screen
+            // Just trigger a status update to refresh the unified display
+            updateEngineStatus(false);
+        }
+
+        // Auto-refresh unified status every 30 seconds
+        function startConfigurationUpdates() {
+            updateEngineStatus(true); // Initial load with animation
+            
+            setInterval(async () => {
+                console.log('🔄 Auto-refreshing unified status...');
+                await updateEngineStatus(false); // Silent updates
+            }, 30000); // 30 seconds
         }
 
         // Initialize conversations on page load
@@ -2836,6 +3246,9 @@ Total conversations: ${conversations.length}
             if (usernameInput) usernameInput.addEventListener('keypress', handleLoginKeyPress);
             if (passwordInput) passwordInput.addEventListener('keypress', handleLoginKeyPress);
             
+            // Start configuration monitoring and updates
+            startConfigurationUpdates();
+            
             console.log('✅ Application initialized successfully');
             console.log('🎬 Typewriter effect enabled. Type "typewriterControls.help()" in console for controls.');
             console.log('💬 Conversation management available. Type "conversationControls.help()" in console for controls.');
@@ -2887,9 +3300,19 @@ Total conversations: ${conversations.length}
                 statusEl.textContent = 'Not Connected';
                 statusEl.className = 'status-indicator status-disconnected';
             }
+            
+            // Refresh engine status when API key changes
+            setTimeout(() => updateEngineStatus(false), 100);
         }
 
         document.getElementById('apiKey').addEventListener('input', updateApiStatus);
+
+        // Real-time Engine Status Event Listeners
+        document.getElementById('apiKey').addEventListener('input', function() {
+            setTimeout(() => updateEngineStatus(true), 100); // Small delay to ensure API status updates first
+        });
+
+
 
         function resetCopyButton() {
             const btn = document.getElementById('copyChatBtn');
@@ -2956,8 +3379,8 @@ Total conversations: ${conversations.length}
                 // Get API key for request (empty string if using environment key)
                 const apiKeyForRequest = hasEnvironmentKey ? '' : apiKey;
                 
-                // Get preferred model selection
-                const preferredModel = document.getElementById('preferredModel').value;
+                // Use intelligent auto-selection (no manual model selection)
+                const preferredModel = ''; // Always use auto-selection
                 
                 // Debug: Log what we're sending
                 console.log('🚀 DEBUG: Sending message with data:');
@@ -2994,16 +3417,54 @@ Total conversations: ${conversations.length}
                 const data = await response.json();
 
                 if (response.ok) {
+                    // Increment total queries counter for unified status
+                    const currentCount = parseInt(sessionStorage.getItem('totalQueries') || '0');
+                    sessionStorage.setItem('totalQueries', (currentCount + 1).toString());
+                    
                     // Update AI status to ready with token count
                     updateAIStatus('Ready', data.estimated_tokens || 0);
                     
-                    // Update model display if model_used is returned
+                    // Store the actual model used for dynamic status display
                     if (data.model_used) {
+                        // Store the last used model in session storage
+                        sessionStorage.setItem('lastUsedModel', data.model_used);
+                        
+                        // Update the dynamic status to show the actual model being used
+                        updateEngineStatus(false);
+                        
+                        // Add brief visual feedback to show model was just used
                         const modelElement = document.getElementById('currentModel');
                         if (modelElement) {
-                            modelElement.textContent = data.model_used;
+                            modelElement.style.transition = 'all 0.3s ease';
+                            modelElement.style.backgroundColor = 'rgba(40, 167, 69, 0.2)';
+                            modelElement.style.padding = '2px 6px';
+                            modelElement.style.borderRadius = '4px';
+                            setTimeout(() => {
+                                modelElement.style.backgroundColor = 'transparent';
+                                modelElement.style.padding = '0';
+                            }, 2000);
                         }
                     }
+                    
+                    // Update last response tokens if available
+                    if (data.estimated_tokens) {
+                        const lastTokensEl = document.getElementById('lastTokens');
+                        if (lastTokensEl) {
+                            lastTokensEl.textContent = data.estimated_tokens.toLocaleString();
+                            lastTokensEl.style.color = '#28a745';
+                            lastTokensEl.style.fontWeight = '600';
+                            
+                            // Animate the token count update
+                            lastTokensEl.style.transition = 'all 0.3s ease';
+                            lastTokensEl.style.transform = 'scale(1.1)';
+                            setTimeout(() => {
+                                lastTokensEl.style.transform = 'scale(1)';
+                            }, 300);
+                        }
+                    }
+                    
+                    // Refresh full dynamic engine status
+                    setTimeout(() => updateEngineStatus(false), 500);
                     
                     // Add AI message with typewriter effect using the returned message ID (skip auto-scroll)
                     addMessageToChatWithTypewriter('assistant', data.ai_response || data.response, data.ai_message_id, true);
@@ -3473,6 +3934,14 @@ Total conversations: ${conversations.length}
             
             // Load conversations from backend on startup
             refreshConversationsList();
+            
+            // Start periodic engine status updates for truly dynamic display
+            setInterval(() => {
+                updateEngineStatus(false); // Silent updates
+            }, 30000); // Update every 30 seconds
+            
+            // Initial engine status update after page load
+            setTimeout(() => updateEngineStatus(true), 1000); // Initial load with animations
         });
 
         // ============================================================================

@@ -16,7 +16,8 @@ from datetime import datetime
 
 class OpenAIAssistantManager:
     def __init__(self, api_key: str):
-        self.client = openai.OpenAI(api_key=api_key)
+        clean_api_key = api_key.strip() if api_key else ""
+        self.client = openai.OpenAI(api_key=clean_api_key)
         self.assistant_id = None
         
     def create_assistant(self) -> str:
