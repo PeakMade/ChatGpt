@@ -228,7 +228,7 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
         
         # Add enhanced system prompt for current knowledge optimization  
         current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST, a concise real estate and business AI assistant with current knowledge through {current_date} and web search capabilities. Provide focused, single-paragraph responses that are direct and actionable without citations or sources. Use **bold key terms** sparingly for emphasis. Keep responses brief but complete - aim for clarity and practical value in one cohesive paragraph."""
+        system_prompt = f"""You are AI BOOST. Provide complete, informative answers in 1-2 paragraphs. Prioritize finishing your full thought over staying under token limits - never cut off mid-sentence or leave answers incomplete. IMPORTANT: When referencing sources, always include the simple domain name in parentheses like (reuters.com) or (cnn.com). Use ONLY the domain name - NO markdown formatting, NO https://, NO full URLs, NO utm parameters. Example: "The latest data shows..." (bloomberg.com). Be conversational and direct."""
 
         openai_messages.append({
             "role": "system",
@@ -352,7 +352,7 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         
         # Add system prompt with 2025 knowledge context
         current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST, an advanced AI assistant with current knowledge through {current_date} and web search capabilities for real-time data. Provide focused, single-paragraph responses that are direct and actionable without citations or sources. Use **bold key terms** sparingly for emphasis. Keep responses brief but complete - aim for clarity and practical value in one cohesive paragraph."""
+        system_prompt = f"""You are AI BOOST. Provide complete, informative answers in 1-2 paragraphs. Prioritize finishing your full thought over staying under token limits - never cut off mid-sentence or leave answers incomplete. IMPORTANT: When referencing sources, always include the simple domain name in parentheses like (reuters.com) or (cnn.com). Use ONLY the domain name - NO markdown formatting, NO https://, NO full URLs, NO utm parameters. Example: "The latest data shows..." (bloomberg.com). Be conversational and direct."""
 
         openai_messages.append({
             "role": "system",
@@ -363,7 +363,7 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease provide a focused, concise response based on this content."
+                "content": f"Context: {uploaded_content}\n\nUse this information to provide a comprehensive but concise 1-2 paragraph response that naturally incorporates the context."
             })
         
         # Add conversation history
@@ -459,7 +459,7 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         
         # Add system prompt with 2025 knowledge context
         current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST, an advanced AI assistant with current knowledge through {current_date} and web search capabilities for real-time data. Provide focused, single-paragraph responses that are direct and actionable without citations or sources. Use **bold key terms** sparingly for emphasis. Keep responses brief but complete - aim for clarity and practical value in one cohesive paragraph."""
+        system_prompt = f"""You are AI BOOST. Provide complete, informative answers in 1-2 paragraphs. Prioritize finishing your full thought over staying under token limits - never cut off mid-sentence or leave answers incomplete. IMPORTANT: When referencing sources, always include the simple domain name in parentheses like (reuters.com) or (cnn.com). Use ONLY the domain name - NO markdown formatting, NO https://, NO full URLs, NO utm parameters. Example: "The latest data shows..." (bloomberg.com). Be conversational and direct."""
 
         openai_messages.append({
             "role": "system",
@@ -470,7 +470,7 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"The user has uploaded the following content for context:\n\n{uploaded_content}\n\nPlease provide a focused, concise response based on this content."
+                "content": f"Context: {uploaded_content}\n\nUse this information to provide a comprehensive but concise 1-2 paragraph response that naturally incorporates the context."
             })
         
         # Add conversation history
