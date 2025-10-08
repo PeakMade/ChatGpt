@@ -734,9 +734,7 @@ def chat():
         print(f"🚀 FINAL DECISION: {selected_model.upper()}")
         print("=" * 60)
         
-        # Use lightweight chat completion for Azure deployment (avoid memory issues)
-        print("🔄 Using lightweight chat completion for Azure compatibility")
-        return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, selected_model)
+        # Try thread-based Assistant Manager first, fallback to basic chat if needed
         try:
             assistant_manager = get_or_create_assistant_manager(api_key)
             # Set the model for this request
