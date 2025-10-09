@@ -17,7 +17,7 @@ import io
 import json
 
 # Import configuration functions for external model settings
-from config import (
+from config.config import (
     get_model_for_task, 
     get_max_tokens, 
     get_temperature, 
@@ -26,7 +26,8 @@ from config import (
     get_openai_api_key,
     get_web_search_keywords,
     is_intelligent_selection_enabled,
-    get_model_description
+    get_model_description,
+    SECRET_KEY
 )
 
 # Removed Azure Key Vault integration - using environment variables instead
@@ -91,7 +92,7 @@ except ImportError:
 
 app = Flask(__name__)
 # Use a consistent secret key for development, secure random for production
-app.secret_key = config.SECRET_KEY
+app.secret_key = SECRET_KEY
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400 * 365  # 1 year
 
@@ -188,6 +189,45 @@ def should_use_web_search(user_message):
     
     print(f"📚 NO WEB SEARCH → Using training data for: \"{user_message[:50]}...\"")
     return False
+
+def format_web_search_response(response_text):
+    """
+    Reformat web search response to move all source citations to the end.
+    Converts inline citations like (source.com) to a clean sources section at the bottom.
+    """
+    import re
+    
+    if not response_text:
+        return response_text
+    
+    # Extract all source citations (pattern: text in parentheses ending with .com or similar)
+    source_pattern = r'\(([^)]*\.(?:com|org|net|edu|gov|co\.uk|news|io|ai)[^)]*)\)'
+    sources = re.findall(source_pattern, response_text)
+    
+    if not sources:
+        return response_text
+    
+    # Remove duplicate sources while preserving order
+    unique_sources = []
+    seen = set()
+    for source in sources:
+        if source.lower() not in seen:
+            unique_sources.append(source)
+            seen.add(source.lower())
+    
+    # Remove all inline source citations from the text
+    clean_text = re.sub(source_pattern, '', response_text)
+    
+    # Clean up any double spaces or extra whitespace
+    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+    
+    # Add sources section at the end if we found any
+    if unique_sources:
+        clean_text += "\n\n**Sources:**"
+        for i, source in enumerate(unique_sources, 1):
+            clean_text += f"\n{i}. {source}"
+    
+    return clean_text
 
 def select_optimal_model(user_message, user_preference=None):
     """
@@ -335,8 +375,9 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
                 input=openai_messages,
                 temperature=get_temperature()
             )
-            # Extract response from the new API format
-            ai_response = response.output_text
+            # Extract response from the new API format and format sources
+            raw_response = response.output_text
+            ai_response = format_web_search_response(raw_response)
         else:
             response = client.chat.completions.create(
                 model=selected_model,  # Use intelligently selected model
@@ -461,8 +502,9 @@ def get_chat_response(api_key, messages, uploaded_content=""):
                 input=openai_messages,
                 temperature=get_temperature()
             )
-            # Extract response from the new API format
-            ai_response = response.output_text
+            # Extract response from the new API format and format sources
+            raw_response = response.output_text
+            ai_response = format_web_search_response(raw_response)
         else:
             response = client.chat.completions.create(
                 model=selected_model,  # Use intelligently selected model
@@ -571,8 +613,9 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
                 input=openai_messages,
                 temperature=get_temperature()
             )
-            # Extract response from the new API format
-            ai_response = response.output_text
+            # Extract response from the new API format and format sources
+            raw_response = response.output_text
+            ai_response = format_web_search_response(raw_response)
         else:
             response = client.chat.completions.create(
                 model=selected_model,  # Use intelligently selected model
