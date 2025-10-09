@@ -727,6 +727,14 @@ def chat():
         if not api_key:
             return jsonify({'error': 'Please enter your OpenAI API key'}), 400
         
+        # Check for web search requirements FIRST
+        needs_web_search = should_use_web_search(user_message)
+        if needs_web_search:
+            print("🌐 WEB SEARCH REQUIRED - Using web search model")
+            selected_model = get_model_for_task('web_search')
+            # For web search, use the fallback handler that includes web search functionality
+            return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id)
+        
         # Smart model selection with debug output
         print("=" * 60)
         print(f"🤖 PROCESSING MESSAGE: \"{user_message[:80]}{'...' if len(user_message) > 80 else ''}\"")
