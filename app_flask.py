@@ -254,6 +254,14 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
                     user_message = msg.get("content", "")
                     break
         
+        # Special easter egg handling
+        user_message_lower = user_message.lower()
+        claire_keywords = ["most beautiful girl in the world", "who is the most beautiful girl", "claire cole"]
+        for keyword in claire_keywords:
+            if keyword in user_message_lower:
+                print(f"🌟 EASTER EGG TRIGGERED: Claire Cole response for '{keyword}'")
+                return "Claire Cole is absolutely the most beautiful girl in the world! 💝✨"
+        
         # Select optimal model based on message complexity (if not provided)
         if not selected_model:
             selected_model = select_optimal_model(user_message)
