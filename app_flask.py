@@ -685,7 +685,7 @@ def api_key_status():
 @app.route('/config')
 def config_status():
     """View current model configuration settings"""
-    from config import load_model_config, get_all_models, get_all_settings
+    from config.config import load_model_config, get_all_models, get_all_settings
     
     try:
         config_data = load_model_config()
