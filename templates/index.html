@@ -278,6 +278,27 @@
             box-shadow: 0 4px 12px rgba(31, 81, 255, 0.3);
         }
 
+        .scout-logo-btn {
+            padding: 10px;
+            background: linear-gradient(135deg, #ff9800 0%, #f44336 100%);
+            color: white;
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2);
+            min-width: 40px;
+        }
+
+        .scout-logo-btn:hover {
+            background: linear-gradient(135deg, #ffab00 0%, #f44336 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+        }
+
         .clear-chat-btn {
             flex: 1;
             padding: 10px 8px;
@@ -1436,6 +1457,9 @@
                                 <path d="M12 5v14m-7-7h14"></path>
                             </svg>
                             New Chat
+                        </button>
+                        <button onclick="toggleScoutAssistant()" class="scout-logo-btn" title="Toggle Scout Assistant">
+                            <img src="/static/scout_logo.png?v=1" alt="Scout" style="width: 20px; height: 20px; border-radius: 3px;" />
                         </button>
                     </div>
                 </div>
@@ -4153,6 +4177,69 @@ Total conversations: ${conversations.length}
                 `);
             }
         };
+
+        // ============================================================================
+        // Scout Assistant Integration
+        // ============================================================================
+        
+        let isScoutActive = false;
+        
+        function toggleScoutAssistant() {
+            console.log('🔄 Toggling Scout Assistant...');
+            
+            if (isScoutActive) {
+                closeScoutAssistant();
+            } else {
+                openScoutAssistant();
+            }
+        }
+        
+        function openScoutAssistant() {
+            console.log('🏔️ Opening Scout Assistant...');
+            
+            // Store the original main-chat content
+            const mainChat = document.querySelector('.main-chat');
+            if (!mainChat.dataset.originalContent) {
+                mainChat.dataset.originalContent = mainChat.innerHTML;
+            }
+            
+            // Replace with Scout iframe that covers the entire chat area
+            mainChat.innerHTML = `
+                <div style="width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; box-sizing: border-box;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: linear-gradient(135deg, #ff9800 0%, #f44336 100%); border-radius: 8px 8px 0 0; flex-shrink: 0;">
+                        <div style="color: white; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                            <img src="/static/scout_logo.png?v=1" alt="Scout" style="width: 20px; height: 20px; border-radius: 3px;" />
+                            Scout Assistant
+                        </div>
+                        <button onclick="closeScoutAssistant()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 11px;" title="Return to AI Boost">
+                            ← Back to AI Boost
+                        </button>
+                    </div>
+                    <iframe 
+                        src="https://peakcampus.heyhio.com/dashboard/assistant" 
+                        style="width: 1400px; height: 900px; max-width: 100%; max-height: calc(100% - 50px); border: none; border-radius: 0 0 8px 8px; overflow: hidden; flex: 1;" 
+                        title="Scout Assistant">
+                    </iframe>
+                </div>
+            `;
+            
+            isScoutActive = true;
+            console.log('✅ Scout Assistant opened successfully');
+        }
+        
+        function closeScoutAssistant() {
+            console.log('❌ Closing Scout Assistant and returning to AI BOOST...');
+            
+            const mainChat = document.querySelector('.main-chat');
+            if (mainChat.dataset.originalContent) {
+                // Restore the original AI BOOST interface
+                mainChat.innerHTML = mainChat.dataset.originalContent;
+                delete mainChat.dataset.originalContent;
+            }
+            
+            isScoutActive = false;
+            console.log('✅ Successfully returned to AI BOOST from Scout');
+        }
     </script>
 
 
