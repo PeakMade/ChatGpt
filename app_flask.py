@@ -5,7 +5,7 @@ A modern, responsive web application that replicates ChatGPT functionality using
 
 # Internal note: App running optimally - Sept 2025
 
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 import openai
 from datetime import datetime
 import uuid
@@ -120,10 +120,27 @@ app.secret_key = SECRET_KEY
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400 * 365  # 1 year
 
+from flask_session import Session
+Session(app)
+
+# Register auth blueprint
+from auth.routes import auth_bp
+app.register_blueprint(auth_bp)
+
+# Public paths that don't require authentication
+_PUBLIC_PREFIXES = ('/auth/', '/favicon.ico', '/static/')
+
 @app.before_request
 def make_session_permanent():
-    """Make all sessions permanent to extend conversation persistence"""
+    """Make all sessions permanent and enforce authentication."""
     session.permanent = True
+
+    # Allow auth routes and static assets through without a login check
+    if request.path.startswith(_PUBLIC_PREFIXES):
+        return
+
+    if not session.get('authenticated'):
+        return redirect(url_for('auth.login', next=request.url))
 
 def get_api_key():
     """Get API key from configuration file, environment variables, or return None for user input"""
@@ -724,7 +741,7 @@ def index():
     if 'conversation_id' not in session:
         session['conversation_id'] = str(uuid.uuid4())
     
-    return render_template('index.html')
+    return render_template('index.html', user=session.get('user'))
 
 @app.route('/api-key-status')
 def api_key_status():

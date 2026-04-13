@@ -72,7 +72,7 @@
             display: grid;
             grid-template-columns: 300px 1fr;
             gap: 10px;
-            height: calc(100vh - 60px);
+            height: calc(100vh - 90px);
             justify-content: center;
         }
 
@@ -161,7 +161,7 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 60px);
+            height: calc(100vh - 90px);
         }
 
         .new-chat-section {
@@ -600,7 +600,7 @@
             width: 100%;
             margin: 0 auto;
             position: relative;
-            height: calc(100vh - 60px);
+            height: calc(100vh - 90px);
         }
 
         .chat-messages {
@@ -1430,19 +1430,19 @@
 </head>
 <body>
     <!-- Standard PeakMade Header -->
-    <header style="background: linear-gradient(90deg, #ffb6b6 0%, #1f51ff 50%, #90eeff 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 50px; padding: 0; margin-bottom: 0; flex-shrink: 0;">
-        <div style="display: flex; align-items: center; justify-content: space-between; max-width: 100%; margin: 0 auto; padding: 0 12px; height: 50px; overflow: hidden;">
+    <header style="background: linear-gradient(90deg, #ffb6b6 0%, #1f51ff 50%, #90eeff 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 80px; padding: 0; margin-bottom: 0; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; max-width: 100%; margin: 0 auto; padding: 0 40px; height: 80px; overflow: hidden;">
             <!-- Left Logo (PeakMade) -->
-            <div style="flex-shrink: 0; display: flex; align-items: center; height: 50px;">
-                <img src="/static/Peakmade_logo.png" alt="PeakMade Logo" style="height: 28px; width: auto; max-width: 120px; object-fit: contain;">
+            <div style="flex-shrink: 0; display: flex; align-items: center;">
+                <img src="/static/Peakmade_logo.png" alt="PeakMade Logo" style="height: 48px; width: auto; object-fit: contain;">
             </div>
             <!-- Center Title -->
-            <div style="flex: 1; display: flex; justify-content: center; align-items: center; height: 50px; min-width: 0; padding: 0 8px;">
-                <h1 style="font-size: clamp(14px, 4vw, 22px); font-family: 'Open Sans', Arial, sans-serif; font-weight: 700; color: #fff; margin: 0; letter-spacing: clamp(0.5px, 0.5vw, 2px); text-shadow: 0 2px 6px rgba(0,0,0,0.12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">AI Boost</h1>
+            <div style="flex: 1; display: flex; justify-content: center; align-items: center; min-width: 0; padding: 0 8px;">
+                <h1 style="font-size: 28px; font-family: 'Open Sans', Arial, sans-serif; font-weight: 700; color: #fff; margin: 0; letter-spacing: 2px; text-shadow: 0 2px 6px rgba(0,0,0,0.12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">AI Boost</h1>
             </div>
             <!-- Right Logo (Redpoint) -->
-            <div style="flex-shrink: 0; display: flex; align-items: center; height: 50px;">
-                <img src="/static/Redpoint_logo.png" alt="Redpoint Logo" style="height: 22px; width: auto; max-width: 100px; object-fit: contain;">
+            <div style="flex-shrink: 0; display: flex; align-items: center;">
+                <img src="/static/Redpoint_logo.png" alt="Redpoint Logo" style="height: 32px; width: auto; object-fit: contain;">
             </div>
         </div>
     </header>
@@ -1461,6 +1461,23 @@
                         <button onclick="toggleScoutAssistant()" class="scout-logo-btn" title="Toggle Scout Assistant">
                             <img src="/static/scout_logo.png?v=1" alt="Scout" style="width: 20px; height: 20px; border-radius: 3px;" />
                         </button>
+                        <!-- User account dropdown -->
+                        <div class="dropdown">
+                            <button id="userMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" title="{% if user %}{{ user.name or user.email }}{% else %}Account{% endif %}"
+                                style="padding: 10px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; flex-shrink: 0;">
+                                <i class="fa fa-user-circle" style="font-size: 18px; line-height: 1;"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuBtn" style="font-size: 14px; min-width: 180px;">
+                                {% if user %}
+                                <li><span class="dropdown-item-text fw-semibold" style="font-size: 13px;">{{ user.name }}</span></li>
+                                <li><span class="dropdown-item-text text-muted" style="font-size: 12px;">{{ user.email }}</span></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/auth/logout"><i class="fa fa-sign-out-alt me-2"></i>Sign out</a></li>
+                                {% else %}
+                                <li><a class="dropdown-item" href="/auth/login"><i class="fa fa-sign-in-alt me-2"></i>Sign in</a></li>
+                                {% endif %}
+                            </ul>
+                        </div>
                     </div>
                 </div>
                 
