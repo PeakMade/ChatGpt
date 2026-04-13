@@ -300,6 +300,16 @@ def select_optimal_model(user_message, user_preference=None):
     print(f"💰 SIMPLE MODEL SELECTED → Simple query: \"{user_message[:50]}...\"")
     return get_model_for_task('simple')
 
+def extract_text_from_content(content):
+    """Safely extract plain text from a message content (handles str or vision list)"""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        # Vision content: list of dicts with type 'text' or 'image_url'
+        parts = [item.get("text", "") for item in content if isinstance(item, dict) and item.get("type") == "text"]
+        return " ".join(parts)
+    return ""
+
 def get_chat_response_with_conversation(api_key, conversation_messages, selected_model=None, uploaded_content=""):
     """Get response from OpenAI API with full conversation context"""
     if not api_key:
@@ -309,13 +319,12 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
         # Clean the API key of any whitespace
         api_key = api_key.strip()
         
-        # Get the user's message for model selection
+        # Get the user's message text for model selection (safe for vision messages)
         user_message = ""
         if conversation_messages:
-            # Get the last user message
             for msg in reversed(conversation_messages):
                 if msg.get("role") == "user":
-                    user_message = msg.get("content", "")
+                    user_message = extract_text_from_content(msg.get("content", ""))
                     break
         
 
@@ -370,7 +379,8 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
         print("🚀" * 60)
         for i, msg in enumerate(openai_messages):
             role_emoji = "🧠" if msg["role"] == "system" else ("👤" if msg["role"] == "user" else "🤖")
-            content_preview = msg["content"][:100] + ("..." if len(msg["content"]) > 100 else "")
+            content_text = extract_text_from_content(msg["content"])
+            content_preview = content_text[:100] + ("..." if len(content_text) > 100 else "")
             print(f"{role_emoji} Message {i+1} ({msg['role'].upper()}): {content_preview}")
         print("🚀" * 60)
         print(f"🎯 MODEL SELECTED: {selected_model}")
@@ -381,7 +391,8 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
         print(f"here2: {openai_messages}")
         
         # Check if we should use web search for current information
-        user_message = conversation_messages[-1]["content"] if conversation_messages else ""
+        last_content = conversation_messages[-1]["content"] if conversation_messages else ""
+        user_message = extract_text_from_content(last_content)
         needs_web_search = should_use_web_search(user_message)
         
         if needs_web_search:
@@ -504,7 +515,8 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         print("🚀" * 60)
         for i, msg in enumerate(openai_messages):
             role_emoji = "🧠" if msg["role"] == "system" else ("👤" if msg["role"] == "user" else "🤖")
-            content_preview = msg["content"][:100] + ("..." if len(msg["content"]) > 100 else "")
+            content_text = extract_text_from_content(msg["content"])
+            content_preview = content_text[:100] + ("..." if len(content_text) > 100 else "")
             print(f"{role_emoji} Message {i+1} ({msg['role'].upper()}): {content_preview}")
         print("🚀" * 60)
         print(f"🎯 MODEL SELECTED: {selected_model}")
@@ -622,7 +634,8 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         print("🚀" * 60)
         for i, msg in enumerate(openai_messages):
             role_emoji = "🧠" if msg["role"] == "system" else ("👤" if msg["role"] == "user" else "🤖")
-            content_preview = msg["content"][:100] + ("..." if len(msg["content"]) > 100 else "")
+            content_text = extract_text_from_content(msg["content"])
+            content_preview = content_text[:100] + ("..." if len(content_text) > 100 else "")
             print(f"{role_emoji} Message {i+1} ({msg['role'].upper()}): {content_preview}")
         print("🚀" * 60)
         print(f"🎯 MODEL SELECTED: {selected_model}")
@@ -633,7 +646,7 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         print(f"here: {openai_messages}")
         
         # Check if we should use web search for current information
-        user_message = messages[-1]["content"] if messages else ""
+        user_message = extract_text_from_content(messages[-1]["content"]) if messages else ""
         needs_web_search = should_use_web_search(user_message)
         
         if needs_web_search:
@@ -822,14 +835,22 @@ def chat():
         else:
             api_key = user_api_key
         
+        uploaded_content_check = data.get('uploaded_content', '').strip() if data.get('uploaded_content') else ''
+        uploaded_image_check = data.get('uploaded_image', None)
         if not user_message:
-            return jsonify({'error': 'Message cannot be empty'}), 400
+            if uploaded_image_check:
+                user_message = 'What is in this image?'
+            elif uploaded_content_check:
+                user_message = 'Please summarize this document.'
+            else:
+                return jsonify({'error': 'Message cannot be empty'}), 400
         
         if not api_key:
             return jsonify({'error': 'Please enter your OpenAI API key'}), 400
         
-        # Get uploaded image data if present
+        # Get uploaded content and image data if present
         uploaded_image = data.get('uploaded_image', None)
+        uploaded_content = data.get('uploaded_content', '').strip() if data.get('uploaded_content') else ''
 
         # Check for web search requirements FIRST
         needs_web_search = should_use_web_search(user_message)
@@ -837,7 +858,7 @@ def chat():
             print("🌐 WEB SEARCH REQUIRED - Using web search model")
             selected_model = get_model_for_task('web_search')
             # For web search, use the fallback handler that includes web search functionality
-            return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, uploaded_image=uploaded_image)
+            return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, uploaded_image=uploaded_image, uploaded_content=uploaded_content)
         
         # Smart model selection with debug output
         print("=" * 60)
@@ -847,7 +868,7 @@ def chat():
         print("=" * 60)
 
         # Use Responses API directly
-        return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, selected_model, uploaded_image=uploaded_image)
+        return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, selected_model, uploaded_image=uploaded_image, uploaded_content=uploaded_content)
         
     except Exception as e:
         print(f"❌ Chat error: {str(e)}")
@@ -864,7 +885,7 @@ def chat():
             'session_size_bytes': session_size if 'session_size' in locals() else 0
         }), 500
 
-def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, selected_model=None, uploaded_image=None):
+def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, selected_model=None, uploaded_image=None, uploaded_content=''):
     """Fallback to basic chat completion when Assistant Manager fails"""
     try:
         print("🔄 Using fallback chat completion API")
@@ -899,12 +920,16 @@ def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, 
                     {"type": "image_url", "image_url": {"url": uploaded_image}}
                 ]
             })
+        elif uploaded_content:
+            # Embed document content directly in the user message so it is unambiguous
+            combined = f"{user_message}\n\n[Attached document]:\n{uploaded_content}"
+            conversation_messages.append({"role": "user", "content": combined})
         else:
             conversation_messages.append({"role": "user", "content": user_message})
         print(f"🔍 DEBUG: Total messages for API call: {len(conversation_messages)}")
         
         # Get AI response using basic completion with selected model
-        ai_response = get_chat_response_with_conversation(api_key, conversation_messages, selected_model)
+        ai_response = get_chat_response_with_conversation(api_key, conversation_messages, selected_model, uploaded_content=uploaded_content)
         
         # Store messages in session
         user_msg = {

@@ -677,10 +677,10 @@
             border-top: 1px solid rgba(31, 81, 255, 0.1);
             background: linear-gradient(145deg, #f8fcff 0%, #ffffff 100%);
             display: flex;
+            flex-direction: column;
             justify-content: center;
-            align-items: center;
+            align-items: stretch;
             flex-shrink: 0;
-            height: 60px;
         }
 
         .input-group {
@@ -1603,7 +1603,7 @@
 
             <div class="chat-input-container">
                 <div class="input-group">
-                    <input type="text" id="messageInput" class="chat-input" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
+                    <input type="text" id="messageInput" class="chat-input" placeholder="Enter a message..." onkeypress="handleKeyPress(event)">
                     
                     <div class="input-actions">
                         <button onclick="triggerFileUpload()" class="attachment-btn" title="Add attachment">
@@ -1630,6 +1630,7 @@
     <script>
         let uploadedContent = '';
         let uploadedImageData = null; // base64 data URL for image uploads
+        let docContentMap = {}; // stores extracted doc text keyed by unique id
         let currentConversationId = null;
         let currentThreadId = null; // OpenAI thread ID for conversation persistence
         let conversations = JSON.parse(localStorage.getItem('chatConversations') || '[]');
@@ -3357,7 +3358,7 @@ Total conversations: ${conversations.length}
             const messageInput = document.getElementById('messageInput');
             const message = messageInput.value.trim();
             
-            if (!message) {
+            if (!message && !uploadedImageData && !uploadedContent) {
                 showError('Please enter a message');
                 return;
             }
@@ -3397,8 +3398,21 @@ Total conversations: ${conversations.length}
             // Generate message ID for user message
             const userMessageId = generateMessageId();
 
+            // Build display content including any attachments
+            let chatDisplayContent = message || '';
+            if (uploadedImageData) {
+                chatDisplayContent += `<br><a href="${uploadedImageData}" target="_blank" title="Click to open full size"><img src="${uploadedImageData}" style="max-width:260px;max-height:200px;border-radius:8px;margin-top:6px;display:block;cursor:pointer;"></a>`;
+            }
+            if (uploadedContent) {
+                const docPreviewSpan = document.querySelector('#attachmentDocPreview span:nth-child(2)');
+                const docName = docPreviewSpan ? docPreviewSpan.textContent : 'Document';
+                const docKey = 'doc_' + Date.now();
+                docContentMap[docKey] = { name: docName, content: uploadedContent };
+                chatDisplayContent += `<br><span onclick="showDocContent('${docKey}')" style="font-size:13px;background:rgba(0,0,0,0.08);padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer;" title="Click to view document">&#128196; ${docName}</span>`;
+            }
+
             // Add user message to chat immediately (skip auto-scroll for now)
-            addMessageToChat('user', message, userMessageId, true);
+            addMessageToChat('user', chatDisplayContent, userMessageId, true);
 
             try {
                 // Get API key for request (empty string if using environment key)
@@ -3521,6 +3535,11 @@ Total conversations: ${conversations.length}
                     uploadedImageData = null;
                     const imgPreview = document.getElementById('attachmentImagePreview');
                     if (imgPreview) imgPreview.remove();
+
+                    // Clear document after it's been sent
+                    uploadedContent = '';
+                    const docPreview = document.getElementById('attachmentDocPreview');
+                    if (docPreview) docPreview.remove();
 
                     // Save conversation after successful response
                     setTimeout(() => saveConversation(), 1000);
@@ -3916,12 +3935,10 @@ Total conversations: ${conversations.length}
                 reader.onload = function(e) {
                     uploadedImageData = e.target.result;
                     showAttachmentImagePreview(uploadedImageData, file.name);
-                    addMessageToChat('assistant', `🖼️ Image "${file.name}" attached! Type your question and send.`);
                 };
                 reader.readAsDataURL(file);
             } else {
                 // Document upload — send to server for text extraction
-                addMessageToChat('user', `📎 Uploading: ${file.name}...`);
                 uploadAttachmentFile(file);
             }
             // Reset input so same file can be re-selected
@@ -3934,6 +3951,7 @@ Total conversations: ${conversations.length}
             if (existing) existing.remove();
 
             const container = document.querySelector('.chat-input-container');
+            const inputGroup = container.querySelector('.input-group');
             const preview = document.createElement('div');
             preview.id = 'attachmentImagePreview';
             preview.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(31,81,255,0.07);border-radius:8px;margin-bottom:6px;border:1px solid rgba(31,81,255,0.2);';
@@ -3942,7 +3960,7 @@ Total conversations: ${conversations.length}
                 <span style="font-size:13px;color:#444;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fileName}</span>
                 <button onclick="clearAttachmentImage()" style="background:none;border:none;cursor:pointer;color:#dc3545;font-size:16px;padding:0 4px;" title="Remove image">&times;</button>
             `;
-            container.insertBefore(preview, container.firstChild);
+            container.insertBefore(preview, inputGroup);
         }
 
         function clearAttachmentImage() {
@@ -3965,13 +3983,59 @@ Total conversations: ${conversations.length}
 
                 if (response.ok) {
                     uploadedContent = data.full_content;
-                    addMessageToChat('assistant', `✅ File "${data.filename}" uploaded! You can now ask me questions about it.`);
+                    showAttachmentDocPreview(data.filename);
                 } else {
                     addMessageToChat('assistant', `❌ Upload failed: ${data.error || 'Unknown error'}`);
                 }
             } catch (error) {
                 addMessageToChat('assistant', `❌ Upload error: ${error.message}`);
             }
+        }
+
+        function showAttachmentDocPreview(fileName) {
+            // Remove any existing doc preview
+            const existing = document.getElementById('attachmentDocPreview');
+            if (existing) existing.remove();
+
+            const container = document.querySelector('.chat-input-container');
+            const inputGroup = container.querySelector('.input-group');
+            const preview = document.createElement('div');
+            preview.id = 'attachmentDocPreview';
+            preview.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(31,81,255,0.07);border-radius:8px;margin-bottom:6px;border:1px solid rgba(31,81,255,0.2);';
+            preview.innerHTML = `
+                <span style="font-size:20px;">&#128196;</span>
+                <span style="font-size:13px;color:#444;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fileName}</span>
+                <button onclick="clearAttachmentDoc()" style="background:none;border:none;cursor:pointer;color:#dc3545;font-size:16px;padding:0 4px;" title="Remove file">&times;</button>
+            `;
+            container.insertBefore(preview, inputGroup);
+        }
+
+        function clearAttachmentDoc() {
+            uploadedContent = '';
+            const preview = document.getElementById('attachmentDocPreview');
+            if (preview) preview.remove();
+        }
+
+        function showDocContent(docKey) {
+            const doc = docContentMap[docKey];
+            if (!doc) return;
+            // Remove existing modal if any
+            const existing = document.getElementById('docViewerModal');
+            if (existing) existing.remove();
+            const modal = document.createElement('div');
+            modal.id = 'docViewerModal';
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            modal.innerHTML = `
+                <div style="background:#fff;border-radius:12px;width:90%;max-width:700px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #eee;">
+                        <span style="font-weight:600;font-size:15px;">&#128196; ${doc.name}</span>
+                        <button onclick="document.getElementById('docViewerModal').remove()" style="background:none;border:none;cursor:pointer;font-size:22px;color:#666;">&times;</button>
+                    </div>
+                    <pre style="flex:1;overflow:auto;padding:16px 18px;font-size:13px;font-family:inherit;white-space:pre-wrap;word-break:break-word;margin:0;">${doc.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+                </div>
+            `;
+            modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+            document.body.appendChild(modal);
         }
 
         // Load existing messages on page load
@@ -4010,6 +4074,25 @@ Total conversations: ${conversations.length}
             
             // Initial engine status update after page load
             setTimeout(() => updateEngineStatus(true), 1000); // Initial load with animations
+
+            // Clipboard paste handler for images
+            document.getElementById('messageInput').addEventListener('paste', function(event) {
+                const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+                for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                        event.preventDefault();
+                        const file = item.getAsFile();
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            uploadedImageData = e.target.result;
+                            showAttachmentImagePreview(uploadedImageData, 'pasted-image.png');
+                        };
+                        reader.readAsDataURL(file);
+                        return; // Only handle first image
+                    }
+                }
+            });
         });
 
         // ============================================================================
