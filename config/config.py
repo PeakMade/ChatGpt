@@ -46,10 +46,10 @@ def create_default_config(config_file):
     
     # Add sections and default values
     config.add_section('models')
-    config.set('models', 'simple_model', 'gpt-4o-mini')
-    config.set('models', 'complex_model', 'gpt-4o')
-    config.set('models', 'web_search_model', 'gpt-4o')
-    config.set('models', 'fallback_model', 'gpt-4')
+    config.set('models', 'simple_model', 'gpt-5.4-mini')
+    config.set('models', 'complex_model', 'gpt-5.4-mini')
+    config.set('models', 'web_search_model', 'gpt-5.4-mini')
+    config.set('models', 'fallback_model', 'gpt-5.4-mini')
     
     config.add_section('settings')
     config.set('settings', 'max_tokens', '350')
@@ -70,7 +70,7 @@ def create_default_config(config_file):
     config.set('complex_keywords', 'high_complex', 'analyze, analysis, compare, comparison, evaluate, assessment, research, investigate, examine, study, review, critique, strategy, plan, design, architect, structure, framework')
     
     config.add_section('web_search_keywords')
-    config.set('web_search_keywords', 'current_info', 'current, latest, recent, today, now, this week, this month, this year, up to date, breaking, news, 2025, market trends, current prices, recent data, latest stats')
+    config.set('web_search_keywords', 'current_info', 'current, latest, recent, today, now, this week, this month, this year, up to date, breaking, news, 2026, market trends, current prices, recent data, latest stats')
     
     with open(config_file, 'w', encoding='utf-8') as f:
         config.write(f)
@@ -81,10 +81,10 @@ def get_fallback_config():
     config = configparser.ConfigParser()
     
     config.add_section('models')
-    config.set('models', 'simple_model', 'gpt-4o-mini')
-    config.set('models', 'complex_model', 'gpt-4o')
-    config.set('models', 'web_search_model', 'gpt-4o')
-    config.set('models', 'fallback_model', 'gpt-4')
+    config.set('models', 'simple_model', 'gpt-5.4-mini')
+    config.set('models', 'complex_model', 'gpt-5.4-mini')
+    config.set('models', 'web_search_model', 'gpt-5.4-mini')
+    config.set('models', 'fallback_model', 'gpt-5.4-mini')
     
     config.add_section('settings')
     config.set('settings', 'max_tokens', '350')
@@ -110,7 +110,7 @@ def get_model_for_task(task_type):
         'fallback': 'fallback_model'
     }
     key = model_map.get(task_type, 'fallback_model')
-    return _MODEL_CONFIG.get('models', key, fallback='gpt-4o-mini')
+    return _MODEL_CONFIG.get('models', key, fallback='gpt-5.4-mini')
 
 def get_model_description(model_type):
     """Get description for a model type"""

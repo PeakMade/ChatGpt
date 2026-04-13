@@ -1629,6 +1629,7 @@
 
     <script>
         let uploadedContent = '';
+        let uploadedImageData = null; // base64 data URL for image uploads
         let currentConversationId = null;
         let currentThreadId = null; // OpenAI thread ID for conversation persistence
         let conversations = JSON.parse(localStorage.getItem('chatConversations') || '[]');
@@ -3434,6 +3435,7 @@ Total conversations: ${conversations.length}
                         thread_id: currentThreadId, // Send OpenAI thread ID for conversation persistence
                         message_id: userMessageId,
                         uploaded_content: uploadedContent,
+                        uploaded_image: uploadedImageData,
                         preferred_model: preferredModel
                     })
                 }, 75000); // Increased to 75 seconds (backend has 60s + buffer)
@@ -3515,6 +3517,11 @@ Total conversations: ${conversations.length}
                         console.log('🧵 Stored OpenAI thread_id:', currentThreadId);
                     }
                     
+                    // Clear image after it's been sent
+                    uploadedImageData = null;
+                    const imgPreview = document.getElementById('attachmentImagePreview');
+                    if (imgPreview) imgPreview.remove();
+
                     // Save conversation after successful response
                     setTimeout(() => saveConversation(), 1000);
                     
@@ -3889,7 +3896,7 @@ Total conversations: ${conversations.length}
                 fileInput.type = 'file';
                 fileInput.id = 'attachmentFileInput';
                 fileInput.style.display = 'none';
-                fileInput.accept = '.pdf,.txt,.docx,.md,.csv';
+                fileInput.accept = '.pdf,.txt,.docx,.jpg,.jpeg,.png,.gif,.webp';
                 fileInput.addEventListener('change', handleAttachmentFileSelect);
                 document.body.appendChild(fileInput);
             }
@@ -3900,11 +3907,48 @@ Total conversations: ${conversations.length}
             const file = event.target.files[0];
             if (!file) return;
 
-            // Show upload feedback in the chat
-            const fileName = file.name;
-            addMessageToChat('user', `📎 Uploading file: ${fileName}...`);
+            const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+            const ext = '.' + file.name.split('.').pop().toLowerCase();
 
-            uploadAttachmentFile(file);
+            if (imageExts.includes(ext)) {
+                // Handle image client-side — read as base64 data URL
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImageData = e.target.result;
+                    showAttachmentImagePreview(uploadedImageData, file.name);
+                    addMessageToChat('assistant', `🖼️ Image "${file.name}" attached! Type your question and send.`);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Document upload — send to server for text extraction
+                addMessageToChat('user', `📎 Uploading: ${file.name}...`);
+                uploadAttachmentFile(file);
+            }
+            // Reset input so same file can be re-selected
+            event.target.value = '';
+        }
+
+        function showAttachmentImagePreview(dataUrl, fileName) {
+            // Remove any existing preview
+            const existing = document.getElementById('attachmentImagePreview');
+            if (existing) existing.remove();
+
+            const container = document.querySelector('.chat-input-container');
+            const preview = document.createElement('div');
+            preview.id = 'attachmentImagePreview';
+            preview.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(31,81,255,0.07);border-radius:8px;margin-bottom:6px;border:1px solid rgba(31,81,255,0.2);';
+            preview.innerHTML = `
+                <img src="${dataUrl}" style="height:50px;width:50px;object-fit:cover;border-radius:4px;" alt="preview">
+                <span style="font-size:13px;color:#444;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fileName}</span>
+                <button onclick="clearAttachmentImage()" style="background:none;border:none;cursor:pointer;color:#dc3545;font-size:16px;padding:0 4px;" title="Remove image">&times;</button>
+            `;
+            container.insertBefore(preview, container.firstChild);
+        }
+
+        function clearAttachmentImage() {
+            uploadedImageData = null;
+            const preview = document.getElementById('attachmentImagePreview');
+            if (preview) preview.remove();
         }
 
         async function uploadAttachmentFile(file) {
@@ -3921,7 +3965,7 @@ Total conversations: ${conversations.length}
 
                 if (response.ok) {
                     uploadedContent = data.full_content;
-                    addMessageToChat('assistant', `✅ File "${data.filename}" uploaded successfully! You can now ask me questions about this file.`);
+                    addMessageToChat('assistant', `✅ File "${data.filename}" uploaded! You can now ask me questions about it.`);
                 } else {
                     addMessageToChat('assistant', `❌ Upload failed: ${data.error || 'Unknown error'}`);
                 }

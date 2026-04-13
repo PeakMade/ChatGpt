@@ -38,7 +38,7 @@ You should:
 - Use markdown formatting when helpful for structure
                 
 You are knowledgeable, friendly, and always aim to be as helpful as possible.""",
-                model="gpt-4o",
+                model="gpt-5.4-mini",
                 tools=[]
             )
             self.assistant_id = assistant.id

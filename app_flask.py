@@ -15,6 +15,8 @@ from typing import List, Dict, Any
 import PyPDF2
 import io
 import json
+import base64
+from docx import Document
 
 # Import configuration functions for external model settings
 from config.config import (
@@ -44,6 +46,27 @@ except ImportError as e:
 # Configuration
 import config
 import re
+
+def check_session_cookie_size():
+    """Check if session will exceed browser cookie limits WITHOUT removing conversation data"""
+    try:
+        import json
+        session_data = dict(session)
+        session_json = json.dumps(session_data, default=str)
+        session_size = len(session_json.encode('utf-8'))
+        
+        print(f"📊 Session size: {session_size} bytes (browser limit: ~4000 bytes)")
+        
+        # Log warning if approaching limit but DON'T remove data
+        if session_size > 3500:
+            print(f"⚠️ Session size warning: {session_size} bytes - approaching browser limit")
+            print("🔍 Large session detected but preserving conversation continuity")
+            
+        return session_size
+        
+    except Exception as e:
+        print(f"⚠️ Session size check error: {e}")
+        return 0
 
 def strip_urls_from_response(response):
     """Remove all URLs from the response to ensure clean output"""
@@ -85,7 +108,8 @@ def strip_urls_from_response(response):
 # Load environment variables from .env file for local development
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    from pathlib import Path
+    load_dotenv(dotenv_path=Path(__file__).parent / 'config' / '.env')
 except ImportError:
     # dotenv not installed, skip loading
     pass
@@ -362,24 +386,31 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
         
         if needs_web_search:
             print("🌐 ENABLING WEB SEARCH for current information")
-            # Use web search model with web search capabilities using the correct API format
-            response = client.responses.create(
-                model=get_model_for_task('web_search'),
-                tools=[{"type": "web_search"}],
-                input=openai_messages,
-                temperature=get_temperature()
-            )
-            # Extract response from the new API format and format sources
-            raw_response = response.output_text
-            ai_response = format_web_search_response(raw_response)
+            try:
+                response = client.responses.create(
+                    model=get_model_for_task('web_search'),
+                    tools=[{"type": "web_search"}],
+                    input=openai_messages,
+                    temperature=get_temperature()
+                )
+                raw_response = response.output_text
+                ai_response = format_web_search_response(raw_response)
+            except Exception as ws_err:
+                print(f"⚠️ Web search unavailable ({ws_err}), falling back to training data")
+                response = client.chat.completions.create(
+                    model=selected_model,
+                    messages=openai_messages,
+                    max_completion_tokens=get_max_tokens(),
+                    temperature=get_temperature()
+                )
+                ai_response = response.choices[0].message.content
         else:
             response = client.chat.completions.create(
-                model=selected_model,  # Use intelligently selected model
+                model=selected_model,
                 messages=openai_messages,
-                max_tokens=get_max_tokens(),
+                max_completion_tokens=get_max_tokens(),
                 temperature=get_temperature()
             )
-            # Extract response from standard format
             ai_response = response.choices[0].message.content
         
         # DEBUG: Show response received from OpenAI API
@@ -489,24 +520,31 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         
         if needs_web_search:
             print("🌐 ENABLING WEB SEARCH for current information")
-            # Use web search model with web search capabilities using the correct API format
-            response = client.responses.create(
-                model=get_model_for_task('web_search'),
-                tools=[{"type": "web_search"}],
-                input=openai_messages,
-                temperature=get_temperature()
-            )
-            # Extract response from the new API format and format sources
-            raw_response = response.output_text
-            ai_response = format_web_search_response(raw_response)
+            try:
+                response = client.responses.create(
+                    model=get_model_for_task('web_search'),
+                    tools=[{"type": "web_search"}],
+                    input=openai_messages,
+                    temperature=get_temperature()
+                )
+                raw_response = response.output_text
+                ai_response = format_web_search_response(raw_response)
+            except Exception as ws_err:
+                print(f"⚠️ Web search unavailable ({ws_err}), falling back to training data")
+                response = client.chat.completions.create(
+                    model=selected_model,
+                    messages=openai_messages,
+                    max_completion_tokens=get_max_tokens(),
+                    temperature=get_temperature()
+                )
+                ai_response = response.choices[0].message.content
         else:
             response = client.chat.completions.create(
-                model=selected_model,  # Use intelligently selected model
+                model=selected_model,
                 messages=openai_messages,
-                max_tokens=get_max_tokens(),
+                max_completion_tokens=get_max_tokens(),
                 temperature=get_temperature()
             )
-            # Extract response from standard format
             ai_response = response.choices[0].message.content
         
         # DEBUG: Show response received from OpenAI API
@@ -600,24 +638,31 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         
         if needs_web_search:
             print("🌐 ENABLING WEB SEARCH for current information")
-            # Use web search model with web search capabilities using the correct API format
-            response = client.responses.create(
-                model=get_model_for_task('web_search'),
-                tools=[{"type": "web_search"}],
-                input=openai_messages,
-                temperature=get_temperature()
-            )
-            # Extract response from the new API format and format sources
-            raw_response = response.output_text
-            ai_response = format_web_search_response(raw_response)
+            try:
+                response = client.responses.create(
+                    model=get_model_for_task('web_search'),
+                    tools=[{"type": "web_search"}],
+                    input=openai_messages,
+                    temperature=get_temperature()
+                )
+                raw_response = response.output_text
+                ai_response = format_web_search_response(raw_response)
+            except Exception as ws_err:
+                print(f"⚠️ Web search unavailable ({ws_err}), falling back to training data")
+                response = client.chat.completions.create(
+                    model=selected_model,
+                    messages=openai_messages,
+                    max_completion_tokens=get_max_tokens(),
+                    temperature=get_temperature()
+                )
+                ai_response = response.choices[0].message.content
         else:
             response = client.chat.completions.create(
-                model=selected_model,  # Use intelligently selected model
+                model=selected_model,
                 messages=openai_messages,
-                max_tokens=get_max_tokens(),
+                max_completion_tokens=get_max_tokens(),
                 temperature=get_temperature()
             )
-            # Extract response from standard format
             ai_response = response.choices[0].message.content
         
         # DEBUG: Show response received from OpenAI API
@@ -645,6 +690,15 @@ def extract_text_from_pdf(pdf_file):
         return text
     except Exception as e:
         return f"Error reading PDF: {str(e)}"
+
+def extract_text_from_docx(file):
+    """Extract text from Word .docx file"""
+    try:
+        doc = Document(file)
+        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+        return "\n".join(paragraphs)
+    except Exception as e:
+        return f"Error reading Word document: {str(e)}"
 
 @app.route('/')
 def index():
@@ -725,10 +779,10 @@ def config_status():
             'config_loaded': False,
             'error': str(e),
             'fallback_models': {
-                'simple': 'gpt-4o-mini',
-                'complex': 'gpt-4o',
-                'web_search': 'gpt-4o',
-                'fallback': 'gpt-4'
+                'simple': 'gpt-5.4-mini',
+                'complex': 'gpt-5.4-mini',
+                'web_search': 'gpt-5.4-mini',
+                'fallback': 'gpt-5.4-mini'
             }
         }), 500
 
@@ -740,6 +794,8 @@ def chat():
     print("="*80)
     
     try:
+        # Monitor session size for debugging (preserves all conversation data)
+        session_size = check_session_cookie_size()
         data = request.get_json()
         print(f"🔍 DEBUG: Received data: {data}")
         
@@ -772,13 +828,16 @@ def chat():
         if not api_key:
             return jsonify({'error': 'Please enter your OpenAI API key'}), 400
         
+        # Get uploaded image data if present
+        uploaded_image = data.get('uploaded_image', None)
+
         # Check for web search requirements FIRST
         needs_web_search = should_use_web_search(user_message)
         if needs_web_search:
             print("🌐 WEB SEARCH REQUIRED - Using web search model")
             selected_model = get_model_for_task('web_search')
             # For web search, use the fallback handler that includes web search functionality
-            return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id)
+            return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, uploaded_image=uploaded_image)
         
         # Smart model selection with debug output
         print("=" * 60)
@@ -786,91 +845,26 @@ def chat():
         selected_model = select_optimal_model(user_message)
         print(f"🚀 FINAL DECISION: {selected_model.upper()}")
         print("=" * 60)
-        
-        # Try thread-based Assistant Manager first, fallback to basic chat if needed
-        try:
-            assistant_manager = get_or_create_assistant_manager(api_key)
-            # Set the model for this request
-            assistant_manager.model = selected_model
-        except Exception as e:
-            print(f"❌ Failed to initialize assistant manager: {e}")
-            # Fallback to basic chat completion API
-            return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id)
-        
-        # Use OpenAI thread_id if provided, otherwise create new thread
-        if thread_id and thread_id.startswith('thread_'):
-            print(f"🧵 Using existing OpenAI thread: {thread_id}")
-        else:
-            print("🆕 Creating new OpenAI thread")
-            thread_id = None  # Will be created by assistant manager
-        
-        # Initialize conversation if needed (for session storage)
-        if not conversation_id:
-            conversation_id = str(uuid.uuid4())
-            session['conversation_id'] = conversation_id
-        
-        # Update session API key
-        session['api_key'] = api_key
-        
-        # Store conversation metadata in session (but messages will be in OpenAI threads)
-        if 'conversations' not in session:
-            session['conversations'] = {}
-        
-        if conversation_id not in session['conversations']:
-            session['conversations'][conversation_id] = {
-                'id': conversation_id,
-                'thread_id': thread_id,  # Store OpenAI thread_id
-                'user_id': user_id,      # Store user_id
-                'created_at': datetime.now().isoformat(),
-                'title': user_message[:50] + ('...' if len(user_message) > 50 else ''),
-                'updated_at': datetime.now().isoformat(),
-                'message_count': 0
-            }
-        
-        # Execute the optimal OpenAI chat flow with thread management
-        print("🤖 Executing optimal OpenAI Assistants API flow...")
-        
-        try:
-            # Use Assistant Manager for thread-based conversation
-            result = assistant_manager.complete_chat_flow(
-                user_message=user_message,
-                thread_id=thread_id
-            )
-            
-            # Extract thread_id from result
-            if result and 'thread_id' in result:
-                new_thread_id = result['thread_id']
-                session['conversations'][conversation_id]['thread_id'] = new_thread_id
-                session['conversations'][conversation_id]['updated_at'] = datetime.now().isoformat()
-                session['conversations'][conversation_id]['message_count'] += 2  # user + assistant
-                
-                print(f"✅ Thread-based chat completed. Thread ID: {new_thread_id}")
-                
-                # Save session
-                session.modified = True
-                
-                return jsonify({
-                    'user_message': user_message,
-                    'ai_response': result.get('response', 'No response received'),
-                    'thread_id': new_thread_id,
-                    'user_id': user_id,
-                    'conversation_id': conversation_id,
-                    'timestamp': datetime.now().isoformat(),
-                    'message_ids': result.get('message_ids', {}),
-                    'model_used': selected_model  # Send model used to frontend
-                })
-            else:
-                raise Exception("Invalid response from Assistant Manager")
-                
-        except Exception as e:
-            print(f"❌ Thread-based chat failed: {e}")
-            # Fallback to basic chat completion
-            return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id)
+
+        # Use Responses API directly
+        return handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, selected_model, uploaded_image=uploaded_image)
         
     except Exception as e:
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
+        print(f"❌ Chat error: {str(e)}")
+        # Log session size during error for debugging
+        try:
+            error_session_size = check_session_cookie_size()
+            print(f"🐛 Session size during error: {error_session_size} bytes")
+        except:
+            pass
+        
+        # DON'T clear session - preserve conversation memory
+        return jsonify({
+            'error': f'Chat error: {str(e)}',
+            'session_size_bytes': session_size if 'session_size' in locals() else 0
+        }), 500
 
-def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, selected_model=None):
+def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, selected_model=None, uploaded_image=None):
     """Fallback to basic chat completion when Assistant Manager fails"""
     try:
         print("🔄 Using fallback chat completion API")
@@ -896,8 +890,17 @@ def handle_basic_chat_fallback(user_message, api_key, conversation_id, user_id, 
         else:
             print("🔍 DEBUG: No existing conversation found, starting fresh")
         
-        # Add current user message
-        conversation_messages.append({"role": "user", "content": user_message})
+        # Add current user message (with vision content if image uploaded)
+        if uploaded_image:
+            conversation_messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": user_message if user_message else "What is in this image?"},
+                    {"type": "image_url", "image_url": {"url": uploaded_image}}
+                ]
+            })
+        else:
+            conversation_messages.append({"role": "user", "content": user_message})
         print(f"🔍 DEBUG: Total messages for API call: {len(conversation_messages)}")
         
         # Get AI response using basic completion with selected model
@@ -1263,9 +1266,12 @@ def switch_conversation(conversation_id):
     except Exception as e:
         return jsonify({'error': f'Failed to switch conversation: {str(e)}'}), 500
 
+ALLOWED_IMAGE_TYPES = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+ALLOWED_DOC_TYPES = {'.pdf', '.txt', '.docx'}
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    """Handle file uploads"""
+    """Handle file uploads: PDF, TXT, DOCX, and images"""
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file uploaded'}), 400
@@ -1274,17 +1280,37 @@ def upload_file():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
-        # Process the file based on type
-        if file.filename.lower().endswith('.pdf'):
+        # Validate filename to prevent path traversal
+        filename = os.path.basename(file.filename)
+        ext = os.path.splitext(filename)[1].lower()
+        
+        if ext in ALLOWED_IMAGE_TYPES:
+            # Read image and encode as base64 data URL
+            mime_map = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+                        '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp'}
+            mime_type = mime_map.get(ext, 'image/jpeg')
+            image_bytes = file.read()
+            b64_data = base64.b64encode(image_bytes).decode('utf-8')
+            data_url = f"data:{mime_type};base64,{b64_data}"
+            return jsonify({
+                'type': 'image',
+                'filename': filename,
+                'data_url': data_url,
+                'mime_type': mime_type
+            })
+        elif ext == '.pdf':
             content = extract_text_from_pdf(file)
-        elif file.filename.lower().endswith('.txt'):
-            content = file.read().decode('utf-8')
+        elif ext == '.txt':
+            content = file.read().decode('utf-8', errors='replace')
+        elif ext == '.docx':
+            content = extract_text_from_docx(file)
         else:
-            return jsonify({'error': 'Unsupported file type. Please upload PDF or TXT files.'}), 400
+            return jsonify({'error': 'Unsupported file type. Supported: PDF, TXT, DOCX, JPG, PNG, GIF, WEBP'}), 400
         
         return jsonify({
+            'type': 'document',
             'content': content[:1000] + ('...' if len(content) > 1000 else ''),
-            'filename': file.filename,
+            'filename': filename,
             'full_content': content
         })
         
