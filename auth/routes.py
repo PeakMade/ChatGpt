@@ -2,8 +2,10 @@
 Auth Blueprint — /auth/login, /auth/callback, /auth/logout
 """
 
+import uuid
 from flask import Blueprint, redirect, request, session
 from .auth_helper import AzureADAuth
+from sharepoint_logger import logger as sp_logger
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -44,6 +46,18 @@ def callback():
     except ValueError as e:
         return f"Token exchange failed: {e}", 500
 
+    # Generate a session ID for logging
+    session_id = str(uuid.uuid4())
+    session['log_session_id'] = session_id
+
+    user = session.get('user', {})
+    sp_logger.log(
+        activity_type="Start Session",
+        user_email=user.get('email', ''),
+        user_name=user.get('name', ''),
+        session_id=session_id,
+    )
+
     next_url = session.pop('next', '/')
     return redirect(next_url)
 
@@ -53,5 +67,15 @@ def logout():
     """Clear the session and redirect to Microsoft single-sign-out."""
     auth = AzureADAuth()
     post_logout_uri = request.host_url.rstrip('/')
+
+    user = session.get('user', {})
+    session_id = session.get('log_session_id', '')
+    sp_logger.log(
+        activity_type="End Session",
+        user_email=user.get('email', ''),
+        user_name=user.get('name', ''),
+        session_id=session_id,
+    )
+
     session.clear()
     return redirect(auth.get_logout_url(post_logout_uri))
