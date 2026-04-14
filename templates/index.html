@@ -943,6 +943,39 @@
             transition: all 0.3s ease-in-out;
         }
 
+        /* Response formatting: paragraphs and lists */
+        .message-content {
+            display: inline;
+        }
+        .response-paragraph {
+            display: block;
+            margin: 0 0 0.5em 0;
+            line-height: 1.6;
+        }
+        .response-paragraph:last-child { margin-bottom: 0; }
+        .response-list {
+            margin: 0.25em 0 0.5em 1.4em;
+            padding: 0;
+        }
+        .response-list-item {
+            margin-bottom: 0.3em;
+            line-height: 1.6;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+        .response-list-item.revealed {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .inline-code {
+            background: #f0f0f0;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.88em;
+            font-family: monospace;
+        }
+
         .error {
             color: #dc3545;
             font-size: 12px;
@@ -1968,7 +2001,18 @@ Total conversations: ${conversations.length}
                         conversation.messages.forEach(msg => {
                             const messageEl = document.createElement('div');
                             messageEl.className = msg.isUser ? 'user-message message' : 'assistant-message message';
-                            messageEl.innerHTML = msg.content;
+                            if (!msg.isUser) {
+                                const header = document.createElement('strong');
+                                header.textContent = 'AI Assistant:';
+                                const contentDiv = document.createElement('div');
+                                contentDiv.className = 'message-content';
+                                contentDiv.innerHTML = renderContentAsHTML(msg.content);
+                                messageEl.appendChild(header);
+                                messageEl.appendChild(document.createTextNode(' '));
+                                messageEl.appendChild(contentDiv);
+                            } else {
+                                messageEl.innerHTML = msg.content;
+                            }
                             
                             // Restore message attributes
                             if (msg.id) messageEl.setAttribute('data-message-id', msg.id);
@@ -2313,7 +2357,18 @@ Total conversations: ${conversations.length}
                             messageDiv.setAttribute('data-role', msg.role);
                             
                             const roleLabel = msg.role === 'user' ? 'You' : 'AI Assistant';
-                            messageDiv.innerHTML = `<strong>${roleLabel}:</strong> ${msg.content}`;
+                            if (msg.role === 'assistant') {
+                                const header = document.createElement('strong');
+                                header.textContent = 'AI Assistant:';
+                                const contentDiv = document.createElement('div');
+                                contentDiv.className = 'message-content';
+                                contentDiv.innerHTML = renderContentAsHTML(msg.content);
+                                messageDiv.appendChild(header);
+                                messageDiv.appendChild(document.createTextNode(' '));
+                                messageDiv.appendChild(contentDiv);
+                            } else {
+                                messageDiv.innerHTML = `<strong>${roleLabel}:</strong> ${msg.content}`;
+                            }
                             
                             chatMessages.appendChild(messageDiv);
                         });
@@ -3587,7 +3642,18 @@ Total conversations: ${conversations.length}
             messageDiv.setAttribute('data-role', role);
             
             const roleLabel = role === 'user' ? 'You' : 'AI Assistant';
-            messageDiv.innerHTML = `<strong>${roleLabel}:</strong> ${content}`;
+            if (role === 'assistant') {
+                const header = document.createElement('strong');
+                header.textContent = `${roleLabel}:`;
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                contentDiv.innerHTML = renderContentAsHTML(content);
+                messageDiv.appendChild(header);
+                messageDiv.appendChild(document.createTextNode(' '));
+                messageDiv.appendChild(contentDiv);
+            } else {
+                messageDiv.innerHTML = `<strong>${roleLabel}:</strong> ${content}`;
+            }
             
             chatMessages.appendChild(messageDiv);
             
@@ -3607,21 +3673,23 @@ Total conversations: ${conversations.length}
             const messageDiv = document.createElement('div');
             const msgId = messageId || generateMessageId();
             const timestamp = new Date().toISOString();
-            
+
             messageDiv.className = `message ${role}-message typing`;
             messageDiv.setAttribute('data-message-id', msgId);
             messageDiv.setAttribute('data-timestamp', timestamp);
             messageDiv.setAttribute('data-role', role);
-            
+
             const roleLabel = role === 'user' ? 'You' : 'AI Assistant';
-            const contentSpan = document.createElement('span');
-            
-            messageDiv.innerHTML = `<strong>${roleLabel}:</strong> `;
-            messageDiv.appendChild(contentSpan);
-            
+            const header = document.createElement('strong');
+            header.textContent = `${roleLabel}:`;
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            messageDiv.appendChild(header);
+            messageDiv.appendChild(document.createTextNode(' '));
+            messageDiv.appendChild(contentDiv);
+
             chatMessages.appendChild(messageDiv);
-            
-            // Only scroll if not skipped
+
             if (!skipScroll) {
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
@@ -3629,12 +3697,10 @@ Total conversations: ${conversations.length}
             // Check if typewriter effect is enabled
             if (!typewriterEnabled) {
                 console.log('💨 Typewriter disabled - showing content instantly');
-                contentSpan.textContent = content;
+                contentDiv.innerHTML = renderContentAsHTML(content);
                 messageDiv.classList.remove('typing');
                 if (!skipScroll) {
-                    setTimeout(() => {
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }, 100);
+                    setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 100);
                 }
                 return msgId;
             }
@@ -3642,71 +3708,174 @@ Total conversations: ${conversations.length}
             // Log message creation for debugging
             console.log(`🎬 Starting typewriter effect: ID=${msgId}, Role=${role}, Content length=${content.length}, Timestamp=${timestamp}`);
 
-            // Add typewriter cursor
-            contentSpan.className = 'typewriter';
-
-            // Enhanced typewriter effect that types the FULL response
-            let index = 0;
-            const baseTypeSpeed = 15; // Base speed in milliseconds between characters
-            
-            // Calculate dynamic speed based on content length for better UX
-            let typeSpeed = baseTypeSpeed;
-            if (content.length > 500) {
-                typeSpeed = 12; // Faster for very long responses
-            } else if (content.length > 200) {
-                typeSpeed = 18; // Slightly slower for medium responses
-            } else {
-                typeSpeed = 25; // Slower for short responses to be more readable
-            }
-            
-            // Apply speed multiplier from settings
+            // Calculate dynamic speed based on content length
+            let typeSpeed = 15;
+            if (content.length > 500) typeSpeed = 12;
+            else if (content.length > 200) typeSpeed = 18;
+            else typeSpeed = 25;
             typeSpeed = Math.round(typeSpeed / typewriterSpeedMultiplier);
-            
+
             console.log(`⚡ Using type speed: ${typeSpeed}ms (multiplier: ${typewriterSpeedMultiplier}x) for ${content.length} characters`);
-            
-            function typeCharacter() {
-                if (index < content.length) {
-                    const char = content.charAt(index);
-                    contentSpan.textContent += char;
-                    index++;
-                    
-                    // Auto-scroll to bottom as content appears
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    
-                    // Add small delay for punctuation to make it feel more natural
-                    let nextDelay = typeSpeed;
-                    if (char === '.' || char === '!' || char === '?') {
-                        nextDelay = typeSpeed * 3; // Longer pause after sentences
-                    } else if (char === ',' || char === ';' || char === ':') {
-                        nextDelay = typeSpeed * 2; // Medium pause after commas
-                    } else if (char === '\n') {
-                        nextDelay = typeSpeed * 2; // Pause for line breaks
-                    }
-                    
-                    setTimeout(typeCharacter, nextDelay);
-                } else {
-                    // Typewriter effect complete
+
+            const blocks = parseContentToBlocks(content);
+
+            function animateBlocks(blockIdx) {
+                if (blockIdx >= blocks.length) {
                     console.log('✅ Typewriter effect completed');
-                    contentSpan.classList.remove('typewriter');
+                    contentDiv.querySelectorAll('.typewriter').forEach(el => el.classList.remove('typewriter'));
                     messageDiv.classList.remove('typing');
-                    
-                    // Final scroll to ensure everything is visible (only if not skipped)
                     if (!skipScroll) {
-                        setTimeout(() => {
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
-                        }, 100);
+                        setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 100);
                     }
+                    return;
+                }
+
+                const block = blocks[blockIdx];
+                const next = () => setTimeout(() => animateBlocks(blockIdx + 1), typeSpeed * 3);
+
+                if (block.type === 'paragraph') {
+                    const p = document.createElement('p');
+                    p.className = 'response-paragraph typewriter';
+                    contentDiv.appendChild(p);
+                    typeParagraphBlock(p, block.text, typeSpeed, chatMessages, next);
+                } else {
+                    const tag = block.type === 'ordered-list' ? 'ol' : 'ul';
+                    const listEl = document.createElement(tag);
+                    listEl.className = 'response-list';
+                    contentDiv.appendChild(listEl);
+                    revealListItemsBlock(listEl, block.items, typeSpeed, chatMessages, next);
                 }
             }
-            
+
             // Start typing after a short delay to allow for UI setup
             setTimeout(() => {
                 console.log('🚀 Beginning typewriter animation...');
-                typeCharacter();
+                animateBlocks(0);
             }, 300);
-            
+
             return msgId;
         }
+
+        // ── Typewriter block helpers ──────────────────────────────────────────
+        function typeParagraphBlock(el, rawText, typeSpeed, chatMessages, onComplete) {
+            let index = 0;
+            function typeChar() {
+                if (index < rawText.length) {
+                    el.textContent = rawText.substring(0, index + 1);
+                    index++;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    const char = rawText.charAt(index - 1);
+                    let delayMs = typeSpeed;
+                    if ('.!?'.includes(char)) delayMs = typeSpeed * 3;
+                    else if (',;:'.includes(char)) delayMs = typeSpeed * 2;
+                    else if (char === '\n') delayMs = typeSpeed * 2;
+                    setTimeout(typeChar, delayMs);
+                } else {
+                    el.classList.remove('typewriter');
+                    el.innerHTML = applyInlineFormatting(rawText);
+                    onComplete();
+                }
+            }
+            typeChar();
+        }
+
+        function revealListItemsBlock(listEl, items, typeSpeed, chatMessages, onComplete) {
+            let idx = 0;
+            const itemDelay = Math.max(80, typeSpeed * 6);
+            function revealNext() {
+                if (idx >= items.length) { onComplete(); return; }
+                const li = document.createElement('li');
+                li.className = 'response-list-item';
+                li.innerHTML = applyInlineFormatting(items[idx++]);
+                listEl.appendChild(li);
+                // Double rAF ensures the initial opacity:0 state is painted first
+                requestAnimationFrame(() => requestAnimationFrame(() => li.classList.add('revealed')));
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                setTimeout(revealNext, itemDelay);
+            }
+            revealNext();
+        }
+
+        function applyInlineFormatting(text) {
+            const escaped = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            return escaped
+                .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+                .replace(/`([^`\n]+)`/g, '<code class="inline-code">$1</code>');
+        }
+
+        function parseContentToBlocks(content) {
+            // Normalize inline bullets: split lines containing 2+ ' - ' occurrences
+            // into separate paragraph + bullet lines so the AI's inline style renders correctly
+            const rawLines = content.split('\n');
+            const expandedLines = [];
+            for (const line of rawLines) {
+                const dashCount = (line.match(/ - /g) || []).length;
+                if (dashCount >= 2) {
+                    const parts = line.split(/ - /);
+                    if (parts[0].trim()) expandedLines.push(parts[0].trim());
+                    for (let p = 1; p < parts.length; p++) {
+                        if (parts[p].trim()) expandedLines.push('- ' + parts[p].trim());
+                    }
+                } else {
+                    expandedLines.push(line);
+                }
+            }
+            const lines = expandedLines;
+            const blocks = [];
+            let textBuffer = [];
+
+            function flushText() {
+                const text = textBuffer.join('\n').trim();
+                if (text) blocks.push({ type: 'paragraph', text });
+                textBuffer = [];
+            }
+
+            let i = 0;
+            while (i < lines.length) {
+                const line = lines[i];
+                const isBullet = /^\s*[-*•]\s+/.test(line);
+                const isNumbered = /^\s*\d+\.\s+/.test(line);
+
+                if (isBullet || isNumbered) {
+                    flushText();
+                    const listType = isNumbered ? 'ordered-list' : 'unordered-list';
+                    const items = [];
+                    while (i < lines.length) {
+                        const bl = lines[i].match(/^\s*[-*•]\s+(.*)/);
+                        const nl = lines[i].match(/^\s*\d+\.\s+(.*)/);
+                        if (bl) { items.push(bl[1]); i++; }
+                        else if (nl) { items.push(nl[1]); i++; }
+                        else if (lines[i].trim() === '') { i++; break; }
+                        else break;
+                    }
+                    if (items.length) blocks.push({ type: listType, items });
+                } else {
+                    textBuffer.push(line);
+                    i++;
+                }
+            }
+            flushText();
+            return blocks;
+        }
+
+        function renderContentAsHTML(content) {
+            const blocks = parseContentToBlocks(content);
+            return blocks.map(block => {
+                if (block.type === 'paragraph') {
+                    return `<p class="response-paragraph">${applyInlineFormatting(block.text)}</p>`;
+                }
+                const tag = block.type === 'ordered-list' ? 'ol' : 'ul';
+                const items = block.items.map(item =>
+                    `<li class="response-list-item revealed">${applyInlineFormatting(item)}</li>`
+                ).join('');
+                return `<${tag} class="response-list">${items}</${tag}>`;
+            }).join('');
+        }
+        // ── End typewriter block helpers ──────────────────────────────────────
 
         // Check API key status on page load
         async function checkApiKeyStatus() {
@@ -4069,10 +4238,11 @@ Total conversations: ${conversations.length}
                     updateApiStatus();
                 }
                 
-                if (data.messages && data.messages.length > 0) {
+                if (data.messages && data.messages.length > 0 && !currentConversationId) {
+                    // Only render legacy session messages if no conversation is being loaded
+                    // via the backend path (which has its own renderContentAsHTML render).
                     const chatMessages = document.getElementById('chatMessages');
                     chatMessages.innerHTML = '';
-                    
                     data.messages.forEach(msg => {
                         addMessageToChat(msg.role, msg.content);
                     });

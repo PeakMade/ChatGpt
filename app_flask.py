@@ -47,6 +47,22 @@ except ImportError as e:
 import config
 import re
 
+# ── System prompt (single source of truth) ───────────────────────────────────
+SYSTEM_PROMPT = (
+    "You are AI BOOST. Write responses that feel natural and well-structured — "
+    "like a knowledgeable person explaining something clearly, not a robot filling a template.\n\n"
+    "Use paragraphs to explain context, reasoning, and nuance. "
+    "Use bullet points ONLY when you are listing 3 or more distinct items, steps, or options. "
+    "Do NOT convert every sentence into a bullet. Do NOT put the entire response in bullets. "
+    "A good response might open with a paragraph, use bullets for a specific list, "
+    "then continue with another short paragraph or closing thought.\n\n"
+    "CRITICAL formatting rule: each bullet MUST be on its own separate line starting with '- '. "
+    "Never write bullets inline like 'text - item - item - item' all on one line.\n\n"
+    "NO URLS — do not write https://, www., or any links. "
+    "If you must reference a source, write only the bare domain like (nfl.com)."
+)
+# ─────────────────────────────────────────────────────────────────────────────
+
 def check_session_cookie_size():
     """Check if session will exceed browser cookie limits WITHOUT removing conversation data"""
     try:
@@ -366,13 +382,9 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
         # Prepare messages for OpenAI
         openai_messages = []
         
-        # Add enhanced system prompt for current knowledge optimization  
-        current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST. Give informative 1-2 paragraph answers. STOP PUTTING URLs IN RESPONSES. Do not write https://, do not write (https://...), do not write www., do not write utm_source, do not write any links. If you write ANY URL or link you have failed completely. Only write plain text with maybe one website name at the end like (nfl.com). NO URLS ANYWHERE."""
-
         openai_messages.append({
             "role": "system",
-            "content": system_prompt
+            "content": SYSTEM_PROMPT
         })
         
         # Add uploaded content as context if provided
@@ -503,20 +515,16 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         # Prepare messages for OpenAI
         openai_messages = []
         
-        # Add system prompt with 2025 knowledge context
-        current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST. Give informative 1-2 paragraph answers. STOP PUTTING URLs IN RESPONSES. Do not write https://, do not write (https://...), do not write www., do not write utm_source, do not write any links. If you write ANY URL or link you have failed completely. Only write plain text with maybe one website name at the end like (nfl.com). NO URLS ANYWHERE."""
-
         openai_messages.append({
             "role": "system",
-            "content": system_prompt
+            "content": SYSTEM_PROMPT
         })
         
         # Add uploaded content as context if provided
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"Context: {uploaded_content}\n\nUse this information to provide a 1-2 paragraph response. DO NOT include any URLs, https://, www., or links in your response. NO URLS ANYWHERE."
+                "content": f"Context: {uploaded_content}\n\nUse this information to help answer the user's question. NO URLS ANYWHERE."
             })
         
         # Add conversation history
@@ -624,18 +632,16 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         
         # Add system prompt with 2025 knowledge context
         current_date = datetime.now().strftime("%B %Y")  # e.g., "September 2025"
-        system_prompt = f"""You are AI BOOST. Give informative 1-2 paragraph answers. STOP PUTTING URLs IN RESPONSES. Do not write https://, do not write (https://...), do not write www., do not write utm_source, do not write any links. If you write ANY URL or link you have failed completely. Only write plain text with maybe one website name at the end like (nfl.com). NO URLS ANYWHERE."""
-
         openai_messages.append({
             "role": "system",
-            "content": system_prompt
+            "content": SYSTEM_PROMPT
         })
         
         # Add uploaded content as context if provided
         if uploaded_content:
             openai_messages.append({
                 "role": "system",
-                "content": f"Context: {uploaded_content}\n\nUse this information to provide a 1-2 paragraph response. DO NOT include any URLs, https://, www., or links in your response. NO URLS ANYWHERE."
+                "content": f"Context: {uploaded_content}\n\nUse this information to help answer the user's question. NO URLS ANYWHERE."
             })
         
         # Add conversation history
