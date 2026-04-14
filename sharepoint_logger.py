@@ -28,7 +28,7 @@ class SharePointLogger:
         self.client_secret = os.environ.get("AZURE_AD_CLIENT_SECRET", "")
         self.tenant_id = os.environ.get("AZURE_AD_TENANT_ID", "")
         self.env = os.environ.get("FLASK_ENV", "production")
-        self.env_label = "Dev" if self.env == "development" else "Prod"
+        self.env_label = "Local" if self.env in ("development", "local") else "Prod"
 
     def is_configured(self):
         return bool(self.client_id and self.client_secret and self.tenant_id)

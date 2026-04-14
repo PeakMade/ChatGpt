@@ -5,7 +5,7 @@ A modern, responsive web application that replicates ChatGPT functionality using
 
 # Internal note: App running optimally - Sept 2025
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
 import openai
 from datetime import datetime
 import uuid
@@ -1421,9 +1421,14 @@ def get_messages():
         })
 
 @app.route('/favicon.ico')
+@app.route('/favicon.svg')
 def favicon():
-    """Return a 204 No Content for favicon requests to avoid 404 errors"""
-    return '', 204
+    """Serve the brain favicon."""
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'favicon.svg',
+        mimetype='image/svg+xml',
+    )
 
 if __name__ == '__main__':
     # For local development
