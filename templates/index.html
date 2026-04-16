@@ -947,18 +947,26 @@
         .message-content {
             display: inline;
         }
+        .response-heading {
+            display: block;
+            font-weight: 700;
+            font-size: 1.0em;
+            margin: 1.1em 0 0.25em 0;
+            line-height: 1.4;
+        }
+        .response-heading:first-child { margin-top: 0.2em; }
         .response-paragraph {
             display: block;
-            margin: 0 0 0.5em 0;
-            line-height: 1.6;
+            margin: 0 0 0.75em 0;
+            line-height: 1.65;
         }
         .response-paragraph:last-child { margin-bottom: 0; }
         .response-list {
-            margin: 0.25em 0 0.5em 1.4em;
+            margin: 0.1em 0 0.85em 1.4em;
             padding: 0;
         }
         .response-list-item {
-            margin-bottom: 0.3em;
+            margin-bottom: 0.45em;
             line-height: 1.6;
             opacity: 0;
             transform: translateX(-10px);
@@ -3733,7 +3741,14 @@ Total conversations: ${conversations.length}
                 const block = blocks[blockIdx];
                 const next = () => setTimeout(() => animateBlocks(blockIdx + 1), typeSpeed * 3);
 
-                if (block.type === 'paragraph') {
+                if (block.type === 'heading') {
+                    const h = document.createElement('p');
+                    h.className = 'response-heading';
+                    h.innerHTML = applyInlineFormatting(block.text);
+                    contentDiv.appendChild(h);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    next();
+                } else if (block.type === 'paragraph') {
                     const p = document.createElement('p');
                     p.className = 'response-paragraph typewriter';
                     contentDiv.appendChild(p);
@@ -3808,11 +3823,38 @@ Total conversations: ${conversations.length}
         }
 
         function parseContentToBlocks(content) {
-            // Normalize inline bullets: split lines containing 2+ ' - ' occurrences
-            // into separate paragraph + bullet lines so the AI's inline style renders correctly
+            // Step 1: split raw text into lines
             const rawLines = content.split('\n');
-            const expandedLines = [];
+            const splitLines = [];
+
             for (const line of rawLines) {
+                // Only split inline ### headings if the line does NOT start with ###
+                // e.g. "some intro text ### Section Title more text" → split into separate lines
+                if (!/^#{1,3}\s/.test(line) && /\s#{1,3}\s/.test(line)) {
+                    const parts = line.split(/(?=\s#{1,3}\s)/);
+                    parts.forEach(p => { if (p.trim()) splitLines.push(p.trim()); });
+                    continue;
+                }
+
+                // Only split inline numbered lists if we see " 1. " AND " 2. " on the same line
+                // (avoids false positives like "Week 1. " or "Day 2. " in normal prose)
+                // Strip ** bold markers first to handle "**1. Step" patterns
+                const cleanLine = line.replace(/\*\*/g, '');
+                if (!/^\s*\d+\.\s/.test(cleanLine) && / 1\. /.test(cleanLine) && / 2\. /.test(cleanLine)) {
+                    const idx = cleanLine.indexOf(' 1. ');
+                    const before = cleanLine.substring(0, idx).trim();
+                    const after = cleanLine.substring(idx + 1).trim(); // starts at "1. ..."
+                    if (before) splitLines.push(before);
+                    after.split(/(?=\d+\. )/).forEach(p => { if (p.trim()) splitLines.push(p.trim()); });
+                    continue;
+                }
+
+                splitLines.push(line);
+            }
+
+            // Step 2: normalize inline bullets (2+ " - " on one line)
+            const expandedLines = [];
+            for (const line of splitLines) {
                 const dashCount = (line.match(/ - /g) || []).length;
                 if (dashCount >= 2) {
                     const parts = line.split(/ - /);
@@ -3824,6 +3866,7 @@ Total conversations: ${conversations.length}
                     expandedLines.push(line);
                 }
             }
+
             const lines = expandedLines;
             const blocks = [];
             let textBuffer = [];
@@ -3837,22 +3880,71 @@ Total conversations: ${conversations.length}
             let i = 0;
             while (i < lines.length) {
                 const line = lines[i];
+                const isHeading = /^#{1,3}\s+/.test(line);
                 const isBullet = /^\s*[-*•]\s+/.test(line);
                 const isNumbered = /^\s*\d+\.\s+/.test(line);
 
-                if (isBullet || isNumbered) {
+                if (isHeading) {
+                    flushText();
+                    const headingText = line.replace(/^#{1,3}\s+/, '').trim();
+                    // Skip "Sources" / "Source" headings and everything that follows them
+                    if (/^sources?$/i.test(headingText)) {
+                        i++;
+                        while (i < lines.length && lines[i].trim() !== '') i++;
+                        continue;
+                    }
+                    blocks.push({ type: 'heading', text: headingText });
+                    i++;
+                } else if (/^sources?:/i.test(line.trim())) {
+                    // Skip plain "Sources:" line (not a ### heading) and its items
+                    i++;
+                    while (i < lines.length && lines[i].trim() !== '') i++;
+                } else if (isBullet || isNumbered) {
                     flushText();
                     const listType = isNumbered ? 'ordered-list' : 'unordered-list';
                     const items = [];
+                    let trailingQuestion = null;
+                    let trailingNumberedItems = null;
                     while (i < lines.length) {
                         const bl = lines[i].match(/^\s*[-*•]\s+(.*)/);
                         const nl = lines[i].match(/^\s*\d+\.\s+(.*)/);
-                        if (bl) { items.push(bl[1]); i++; }
-                        else if (nl) { items.push(nl[1]); i++; }
+                        if (listType === 'unordered-list' && bl) { items.push(bl[1]); i++; }
+                        else if (listType === 'ordered-list' && nl) { items.push(nl[1]); i++; }
                         else if (lines[i].trim() === '') { i++; break; }
                         else break;
                     }
-                    if (items.length) blocks.push({ type: listType, items });
+                    // Check if the last item has embedded numbered options (e.g. "...text 1. Option A 2. Option B")
+                    // This catches cases like ": 1." where a non-space char precedes the number
+                    if (items.length > 0 && listType === 'unordered-list') {
+                        const last = items[items.length - 1];
+                        const cleanLast = last.replace(/\*\*/g, '');
+                        const hasNum1 = /\b1\.\s/.test(cleanLast);
+                        const hasNum2 = /\b2\.\s/.test(cleanLast);
+                        if (hasNum1 && hasNum2) {
+                            // Find where the numbered section starts
+                            const numStart = cleanLast.search(/\b1\.\s/);
+                            // Use original (with **) for the before part
+                            const origNumStart = last.search(/\b1\.\s/);
+                            const before = last.substring(0, origNumStart).replace(/[:.\s]+$/, '').trim();
+                            const numberedPart = last.substring(origNumStart).trim();
+                            items[items.length - 1] = before;
+                            trailingNumberedItems = numberedPart.split(/(?=\d+\.\s)/).map(p => p.trim()).filter(p => p);
+                        }
+                    }
+                    // Check if the last item has a trailing question sentence merged into it
+                    if (items.length > 0 && !trailingNumberedItems) {
+                        const last = items[items.length - 1];
+                        const trailingQ = last.match(/^(.*?)\s+([A-Z][^?]{5,}\?)$/);
+                        if (trailingQ && !trailingQ[1].endsWith('?')) {
+                            items[items.length - 1] = trailingQ[1].trim();
+                            trailingQuestion = trailingQ[2].trim();
+                        }
+                    }
+                    // Filter empty items before pushing
+                    const cleanItems = items.filter(it => it.trim());
+                    if (cleanItems.length) blocks.push({ type: listType, items: cleanItems });
+                    if (trailingNumberedItems) blocks.push({ type: 'ordered-list', items: trailingNumberedItems.map(p => p.replace(/^\d+\.\s*/, '')) });
+                    if (trailingQuestion) blocks.push({ type: 'paragraph', text: trailingQuestion });
                 } else {
                     textBuffer.push(line);
                     i++;
@@ -3865,6 +3957,9 @@ Total conversations: ${conversations.length}
         function renderContentAsHTML(content) {
             const blocks = parseContentToBlocks(content);
             return blocks.map(block => {
+                if (block.type === 'heading') {
+                    return `<p class="response-heading">${applyInlineFormatting(block.text)}</p>`;
+                }
                 if (block.type === 'paragraph') {
                     return `<p class="response-paragraph">${applyInlineFormatting(block.text)}</p>`;
                 }

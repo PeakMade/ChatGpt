@@ -54,15 +54,23 @@ SYSTEM_PROMPT = (
     "You have access to real-time web search for current information such as sports scores, schedules, "
     "news, prices, weather, and other live data. When a question is about something current or time-sensitive, "
     "answer it directly using that capability — do NOT tell the user you lack web search or browsing access.\n\n"
-    "Use paragraphs to explain context, reasoning, and nuance. "
-    "Use bullet points ONLY when you are listing 3 or more distinct items or steps (not options). "
-    "When presenting options, choices, or suggestions for the user to select from — especially at the end of a response — ALWAYS use a numbered list (1., 2., 3.) instead of bullet points. "
-    "Do NOT convert every sentence into a bullet. Do NOT put the entire response in bullets. "
-    "A good response might open with a paragraph, use bullets for a specific list, "
-    "then continue with another short paragraph or closing thought.\n\n"
-    "CRITICAL formatting rule: each bullet or numbered item MUST be on its own separate line. "
-    "Bullets start with '- '. Numbered items start with '1.', '2.', etc. "
-    "Never write them inline like 'text - item - item - item' all on one line.\n\n"
+    "FORMATTING — follow these exactly:\n"
+    "- Write in paragraphs as your default. Paragraphs for explanations, context, and reasoning.\n"
+    "- Use ### for section headers when a response has multiple named sections (e.g. ### Week 1-4: Base phase).\n"
+    "- Use **bold** to highlight key terms or critical phrases within a sentence.\n"
+    "- For step-by-step processes or ordered instructions, ALWAYS use a numbered list. "
+    "Each step on its own line: '1. Step title — explanation.' NEVER write numbered steps inline in a paragraph.\n"
+    "- Use bullet points for short unordered lists of 3+ items (single things, not full sentences). "
+    "Each bullet on its own line starting with '- '. Never inline.\n"
+    "- If a section has sub-items, use a header + list under it. Do NOT nest bullets inside bullets.\n\n"
+    "ENDING EVERY RESPONSE:\n"
+    "End with one of these — whichever feels most natural:\n"
+    "  A) A short conversational follow-up question directly related to what was just discussed. "
+    "One sentence, no lead-in. (e.g. 'Want me to turn this into a day-by-day schedule?')\n"
+    "  B) If there are 2-3 distinct directions to go, use a numbered list:\n"
+    "     1. Option — one sentence explaining it.\n"
+    "     2. Option — one sentence explaining it.\n"
+    "Never end without a question or numbered options. Never trail off with just a period.\n\n"
     "NO URLS — do not write https://, www., or any links. "
     "If you must reference a source, write only the bare domain like (nfl.com)."
 )
@@ -94,33 +102,25 @@ def strip_urls_from_response(response):
     if not response:
         return response
     
+    # Remove "Sources:" / "Source:" sections entirely (everything from that word to end of its block)
+    response = re.sub(r'\n?Sources?:\s*\n.*', '', response, flags=re.IGNORECASE | re.DOTALL)
+    
     # Remove markdown links [text](url) but keep the text
     response = re.sub(r'\[([^\]]+)\]\(https?://[^)]+\)', r'\1', response)
     
-    # Remove URLs in parentheses with https://
-    response = re.sub(r'\(https://[^)]+\)', '', response)
-    # Remove URLs in parentheses with http://
-    response = re.sub(r'\(http://[^)]+\)', '', response)
+    # Remove broken/unclosed markdown links like [text]( or [text](url with no closing paren
+    response = re.sub(r'\[([^\]]+)\]\([^)]*$', r'\1', response, flags=re.MULTILINE)
+    response = re.sub(r'\[([^\]]+)\]\(', r'\1', response)
+    
+    # Remove URLs in parentheses with https:// or http://
+    response = re.sub(r'\(https?://[^)]*\)', '', response)
     
     # Remove standalone URLs (not in parentheses)
-    response = re.sub(r'https?://[^\s)]+[^\s.,!?)]', '', response)
-    
-    # Extract domain names from remaining URL patterns and convert to simple citations
-    def extract_domain(match):
-        url = match.group(0)
-        # Extract domain from URL
-        domain_match = re.search(r'https?://(?:www\.)?([^/]+)', url)
-        if domain_match:
-            domain = domain_match.group(1)
-            return f'({domain})'
-        return ''
-    
-    # Look for any remaining URL patterns and convert to domain citations
-    response = re.sub(r'\([^)]*https?://[^)]*\)', extract_domain, response)
+    response = re.sub(r'https?://[^\s)]+', '', response)
     
     # Clean up formatting issues
     response = re.sub(r'\(\s*\)', '', response)  # Remove empty parentheses
-    response = re.sub(r'\s+', ' ', response)     # Remove extra spaces
+    response = re.sub(r' +', ' ', response)       # Remove extra spaces (preserve newlines)
     response = re.sub(r'\s+([.,!?])', r'\1', response)  # Fix punctuation spacing
     response = response.strip()
     
