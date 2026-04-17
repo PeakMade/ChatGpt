@@ -3918,7 +3918,20 @@ Total conversations: ${conversations.length}
                         const nl = lines[i].match(/^\s*\d+\.\s+(.*)/);
                         if (listType === 'unordered-list' && bl) { items.push(bl[1]); i++; }
                         else if (listType === 'ordered-list' && nl) { items.push(nl[1]); i++; }
-                        else if (lines[i].trim() === '') { i++; break; }
+                        else if (lines[i].trim() === '') {
+                            // Look ahead: if the next non-empty line is still a list item of the same
+                            // type, skip this blank line and keep the list going (AI often adds blank
+                            // lines between items for spacing). Otherwise end the list.
+                            let lookahead = i + 1;
+                            while (lookahead < lines.length && lines[lookahead].trim() === '') lookahead++;
+                            const nextLine = lookahead < lines.length ? lines[lookahead] : '';
+                            const nextIsBullet = /^\s*[-*•]\s+/.test(nextLine);
+                            const nextIsNumbered = /^\s*\d+\.\s+/.test(nextLine);
+                            const nextMatchesType = (listType === 'unordered-list' && nextIsBullet) ||
+                                                    (listType === 'ordered-list' && nextIsNumbered);
+                            if (nextMatchesType) { i++; } // skip blank, continue list
+                            else { i++; break; }          // end of list
+                        }
                         else break;
                     }
                     // Check if the last item has embedded numbered options (e.g. "...text 1. Option A 2. Option B")
