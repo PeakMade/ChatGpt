@@ -3932,6 +3932,12 @@ Total conversations: ${conversations.length}
                             if (nextMatchesType) { i++; } // skip blank, continue list
                             else { i++; break; }          // end of list
                         }
+                        else if (lines[i].trim() !== '' && items.length > 0) {
+                            // Continuation line of the previous item (e.g. a long item that wraps
+                            // across multiple lines in the raw API response). Append to last item.
+                            items[items.length - 1] += ' ' + lines[i].trim();
+                            i++;
+                        }
                         else break;
                     }
                     // Check if the last item has embedded numbered options (e.g. "...text 1. Option A 2. Option B")
