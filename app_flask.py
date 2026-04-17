@@ -102,8 +102,8 @@ def strip_urls_from_response(response):
     if not response:
         return response
     
-    # Remove "Sources:" / "Source:" sections entirely (everything from that word to end of its block)
-    response = re.sub(r'\n?Sources?:\s*\n.*', '', response, flags=re.IGNORECASE | re.DOTALL)
+    # Remove "Sources:" / "Source:" sections from raw API output (our formatter adds clean ones)
+    response = re.sub(r'\n?Sources?:\s*\n(?!\d+\.).*', '', response, flags=re.IGNORECASE | re.DOTALL)
     
     # Remove markdown links [text](url) but keep the text
     response = re.sub(r'\[([^\]]+)\]\(https?://[^)]+\)', r'\1', response)
@@ -291,6 +291,82 @@ def format_web_search_response(response_text):
     
     return clean_text
 
+def extract_and_format_citations(response):
+    """
+    Format OpenAI Responses API web search result: convert 【cite†turn0search0】
+    style markers to [1], [2] etc. and append a numbered Sources section with
+    bare domain names (no full URLs).
+    """
+    from urllib.parse import urlparse
+
+    raw_text = response.output_text
+    if not raw_text:
+        return raw_text
+
+    # Collect annotations: list of (start_index, url, title) sorted by position
+    annotations = []
+    try:
+        for item in response.output:
+            if hasattr(item, 'type') and item.type == 'message':
+                for part in item.content:
+                    if hasattr(part, 'type') and part.type == 'output_text':
+                        for ann in getattr(part, 'annotations', []):
+                            annotations.append((
+                                getattr(ann, 'start_index', 0),
+                                getattr(ann, 'url', ''),
+                                getattr(ann, 'title', '')
+                            ))
+    except Exception:
+        pass
+    annotations.sort(key=lambda x: x[0])
+
+    def get_domain(url):
+        try:
+            return urlparse(url).netloc.replace('www.', '') if url else None
+        except Exception:
+            return None
+
+    # Find all citation markers in order and replace with [N]
+    marker_pattern = r'\u3010[^\u3011]*\u3011'
+    matches = list(re.finditer(marker_pattern, raw_text))
+
+    url_to_num = {}
+    source_list = []   # list of (num, display_name)
+    ann_idx = 0
+    replacements = []  # list of (start, end, replacement)
+
+    for match in matches:
+        # Find the annotation whose position is closest to this marker
+        url, title = '', ''
+        for i in range(ann_idx, len(annotations)):
+            ann_start, ann_url, ann_title = annotations[i]
+            if ann_start <= match.end():
+                url, title = ann_url, ann_title
+                ann_idx = i + 1
+                break
+
+        url_key = url or match.group(0)
+        if url_key not in url_to_num:
+            num = len(url_to_num) + 1
+            url_to_num[url_key] = num
+            display = get_domain(url) or title or f'Source {num}'
+            source_list.append((num, display))
+
+        replacements.append((match.start(), match.end(), f'[{url_to_num[url_key]}]'))
+
+    # Apply replacements from end to start so earlier indices stay valid
+    result = raw_text
+    for start, end, repl in reversed(replacements):
+        result = result[:start] + repl + result[end:]
+
+    # Append numbered sources section
+    if source_list:
+        result += '\n\n**Sources:**'
+        for num, name in source_list:
+            result += f'\n{num}. {name}'
+
+    return result
+
 def select_optimal_model(user_message, user_preference=None):
     """
     Enhanced intelligent model selection using external configuration.
@@ -438,8 +514,7 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
                     input=openai_messages,
                     temperature=get_temperature()
                 )
-                raw_response = response.output_text
-                ai_response = format_web_search_response(raw_response)
+                ai_response = extract_and_format_citations(response)
             except Exception as ws_err:
                 print(f"⚠️ Web search unavailable ({ws_err}), falling back to training data")
                 response = client.chat.completions.create(
@@ -569,8 +644,7 @@ def get_chat_response(api_key, messages, uploaded_content=""):
                     input=openai_messages,
                     temperature=get_temperature()
                 )
-                raw_response = response.output_text
-                ai_response = format_web_search_response(raw_response)
+                ai_response = extract_and_format_citations(response)
             except Exception as ws_err:
                 print(f"⚠️ Web search unavailable ({ws_err}), falling back to training data")
                 response = client.chat.completions.create(
@@ -686,8 +760,7 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
                     input=openai_messages,
                     temperature=get_temperature()
                 )
-                raw_response = response.output_text
-                ai_response = format_web_search_response(raw_response)
+                ai_response = extract_and_format_citations(response)
             except Exception as ws_err:
                 print(f"⚠️ Web search unavailable ({ws_err}), falling back to training data")
                 response = client.chat.completions.create(
