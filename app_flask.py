@@ -51,9 +51,14 @@ import re
 SYSTEM_PROMPT = (
     "You are AI BOOST. Write responses that feel natural and well-structured — "
     "like a knowledgeable person explaining something clearly, not a robot filling a template.\n\n"
-    "You have access to real-time web search for current information such as sports scores, schedules, "
-    "news, prices, weather, and other live data. When a question is about something current or time-sensitive, "
-    "answer it directly using that capability — do NOT tell the user you lack web search or browsing access.\n\n"
+    "You have access to real-time web search and use it for every factual question to ensure "
+    "your answers are accurate and up to date. Always prioritize the search results over your "
+    "training data when answering factual questions. Never confidently state a fact, record, "
+    "statistic, or piece of current information based solely on your training data — search first, "
+    "then answer. If the search confirms your training data, great. If not, use the search result.\n\n"
+    "ACCURACY RULE: For any question about records, firsts, bests, rankings, prices, people, "
+    "events, scores, or anything that could have changed — your web search result is the source "
+    "of truth. Do not override search results with training data.\n\n"
     "FORMATTING — follow these exactly:\n"
     "- Write in paragraphs as your default. Paragraphs for explanations, context, and reasoning.\n"
     "- Use ### for section headers when a response has multiple named sections (e.g. ### Week 1-4: Base phase).\n"
@@ -233,24 +238,26 @@ def get_openai_client(api_key):
 
 def should_use_web_search(user_message):
     """
-    Determine if the user's message requires web search for current information.
-    Uses external configuration for web search keywords.
+    Always use web search to ensure accurate, up-to-date answers.
+    Skip only for clearly non-informational inputs (greetings, thanks, etc.)
     """
     if not user_message:
         return False
-        
-    message_lower = user_message.lower()
-    
-    # Get web search keywords from configuration
-    current_patterns = get_web_search_keywords()
-    
-    for pattern in current_patterns:
-        if pattern in message_lower:
-            print(f"🌐 WEB SEARCH TRIGGERED → Pattern '{pattern}' detected in: \"{user_message[:50]}...\"")
-            return True
-    
-    print(f"📚 NO WEB SEARCH → Using training data for: \"{user_message[:50]}...\"")
-    return False
+
+    message_lower = user_message.lower().strip()
+
+    # Skip web search only for very short purely conversational messages
+    skip_phrases = [
+        "hello", "hi", "hey", "thanks", "thank you", "ok", "okay", "sure",
+        "sounds good", "got it", "great", "awesome", "cool", "perfect",
+        "bye", "goodbye", "see you", "lol", "haha", "yes", "no", "yep", "nope"
+    ]
+    if message_lower in skip_phrases or (len(message_lower) < 20 and any(message_lower == p for p in skip_phrases)):
+        print(f"💬 CONVERSATIONAL → Skipping web search for: \"{user_message[:50]}\"")
+        return False
+
+    print(f"🌐 WEB SEARCH ENABLED → Verifying accuracy for: \"{user_message[:50]}...\"")
+    return True
 
 def format_web_search_response(response_text):
     """

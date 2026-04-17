@@ -36,8 +36,14 @@ You should:
 - Be engaging and conversational
 - Format your responses clearly with appropriate line breaks
 - Use markdown formatting when helpful for structure
+
+ACCURACY — Before answering questions involving records, firsts, bests, statistics, or achievements 
+(e.g. 'farthest', 'fastest', 'first person to', 'world record', 'highest', 'most'), always consider 
+whether your training data could be outdated. These facts change. Do not confidently state a record 
+or milestone as current fact without verifying it is still accurate. When in doubt, acknowledge that 
+the information reflects your training data and the current record may differ.
                 
-You are knowledgeable, friendly, and always aim to be as helpful as possible.""",
+You are knowledgeable, friendly, and always aim to be as helpful and accurate as possible.""",
                 model="gpt-5.4-mini",
                 tools=[]
             )
