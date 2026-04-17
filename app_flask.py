@@ -457,11 +457,11 @@ def get_chat_response_with_conversation(api_key, conversation_messages, selected
         try:
             # Method 1: Basic client creation - ensure clean API key
             clean_api_key = api_key.strip() if api_key else ""
-            client = openai.OpenAI(api_key=clean_api_key)
+            client = openai.OpenAI(api_key=clean_api_key, timeout=90.0)
         except Exception as e:
             try:
                 # Method 2: Fallback - try with explicit parameters only
-                client = openai.OpenAI(api_key=clean_api_key, timeout=60.0)
+                client = openai.OpenAI(api_key=clean_api_key, timeout=90.0)
             except Exception as e2:
                 # Method 3: Use simplified approach
                 print(f"Error (fallback): {e2}")
@@ -589,12 +589,12 @@ def get_chat_response(api_key, messages, uploaded_content=""):
         try:
             # Method 1: Basic client creation
             clean_api_key = api_key.strip() if api_key else ""
-            client = openai.OpenAI(api_key=clean_api_key)
+            client = openai.OpenAI(api_key=clean_api_key, timeout=90.0)
         except Exception:
             try:
                 # Method 2: Set API key globally (fallback for older versions)
                 openai.api_key = api_key
-                client = openai.OpenAI()
+                client = openai.OpenAI(timeout=90.0)
             except Exception:
                 # Method 3: Use simplified approach
                 return get_chat_response_legacy(api_key, messages, uploaded_content)
@@ -712,7 +712,7 @@ def get_chat_response_legacy(api_key, messages, uploaded_content=""):
         
         # Create client with explicit API key - ensure clean parameters
         clean_api_key = api_key.strip() if api_key else ""
-        client = openai.OpenAI(api_key=clean_api_key)
+        client = openai.OpenAI(api_key=clean_api_key, timeout=90.0)
         # Prepare messages for OpenAI
         openai_messages = []
         
